@@ -121,7 +121,7 @@ function App() {
           <Route path="segmentation" element={<Segmentation />} />
           <Route path="settings" element={<Settings />} />
           <Route path="support" element={<SupportTickets />} />
-          <Route path="reports" element={<Reports />} />
+          
 
           {/* Default */}
           <Route index element={<Navigate to="/dashboard" replace />} />

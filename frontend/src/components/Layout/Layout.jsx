@@ -148,22 +148,16 @@ const Layout = ({ navigation, userRole}) => {
       role: ['admin', 'marketing', 'analyst', 'support']
     },
     {
-      name: 'Reports',
-      href: '/reports',
-      icon: 'fas fa-chart-bar',
-      role: ['admin', 'analyst']
+      name: 'Support',
+      href: '/support',
+      icon: 'fas fa-life-ring',
+      role: ['admin', 'support']
     },
     {
       name: 'Settings',
       href: '/settings',
       icon: 'fas fa-cog',
       role: ['admin']
-    },
-    {
-      name: 'Support',
-      href: '/support',
-      icon: 'fas fa-life-ring',
-      role: ['admin', 'support']
     }
   ];
 
@@ -332,47 +326,8 @@ const Layout = ({ navigation, userRole}) => {
           </div>
         )}
         
-        <div className="performance-metrics">
-          <h3>Recent Activities</h3>
-          <div className="metric-item">
-            <span className="metric-label">
-              <i className="fas fa-sign-in-alt"></i> Last Login:
-            </span>
-            <span className="metric-value">{user.lastLogin}</span>
-          </div>
-          <div className="metric-item">
-            <span className="metric-label">
-              <i className="fas fa-chart-bar"></i> Reports Generated:
-            </span>
-            <span className="metric-value">{user.reportsGenerated}</span>
-          </div>
-          <div className="metric-item">
-            <span className="metric-label">
-              <i className="fas fa-bullhorn"></i> Campaigns Managed:
-            </span>
-            <span className="metric-value">{user.campaignsManaged}</span>
-          </div>
-        </div>
-        
-        <div className="system-info">
-          <h3>System Information</h3>
-          <div className="detail-item">
-            <span className="detail-label">Account Created:</span>
-            <span className="detail-value">
-              {user.createdAt ? user.createdAt.toDate().toLocaleDateString() : 'N/A'}
-            </span>
-          </div>
-          <div className="detail-item">
-            <span className="detail-label">Last Updated:</span>
-            <span className="detail-value">
-              {user.updatedAt ? user.updatedAt.toDate().toLocaleDateString() : 'N/A'}
-            </span>
-          </div>
-          <div className="detail-item">
-            <span className="detail-label">User ID:</span>
-            <span className="detail-value system-id">{user.id}</span>
-          </div>
-        </div>
+      
+       
       </div>
 
       <div className="dashboard">

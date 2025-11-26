@@ -78,7 +78,7 @@ body {
 
 /* Left Panel: Navigation / List */
 .left-panel {
-  width: 300px;
+  width: 500px;
   background: var(--card-bg);
   border-radius: 16px;
   box-shadow: var(--card-shadow);
@@ -131,7 +131,7 @@ body {
 /* Right Panel: Details */
 .right-panel {
   flex: 1;
-  max-width: 700px;
+  max-width: 1000px;
   background: var(--card-bg);
   border-radius: 16px;
   box-shadow: var(--card-shadow);
