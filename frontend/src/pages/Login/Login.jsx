@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
-import { createUserWithEmailAndPassword, updateProfile, signInWithEmailAndPassword } from 'firebase/auth';
+import { 
+  createUserWithEmailAndPassword, 
+  updateProfile, 
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  sendEmailVerification 
+} from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../../firebase';
 import logo from '../../assets/logo.jpg';
@@ -47,10 +53,12 @@ const Login = () => {
     });
   };
 
+  // --- 1. Sign-Up Handler: Creates user, sends verification email, and redirects to login view ---
   const handleSignUp = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccessMessage('');
 
     if (formData.signupPassword.length < 6) {
       setError('Password must be at least 6 characters');
@@ -71,29 +79,23 @@ const Login = () => {
         displayName: formData.signupFullName
       });
 
-      // Store basic user info with profileCompleted: false
+      // Send email verification right after sign-up
+      await sendEmailVerification(user);
+      
+      // Store basic user info 
       await setDoc(doc(db, 'users', user.uid), {
         fullName: formData.signupFullName,
         email: formData.signupEmail,
         username: formData.signupUsername,
         createdAt: new Date(),
         role: 'user',
-        profileCompleted: false
+        profileCompleted: false,
+        emailVerified: false // Explicitly tracked in Firestore
       });
 
-      console.log('User created successfully:', user);
-      
-      // Initialize profile data with signup information
-      setProfileData({
-        fullName: formData.signupFullName,
-        position: '',
-        department: '',
-        branch: branches[0],
-        email: formData.signupEmail,
-        phone: ''
-      });
+      console.log('User created successfully. Verification email sent.');
 
-      // Clear the signup form
+      // Clear sign up form
       setFormData({
         ...formData,
         signupFullName: '',
@@ -101,10 +103,10 @@ const Login = () => {
         signupUsername: '',
         signupPassword: ''
       });
-
-      // Show profile setup instead of redirecting
-      setShowProfileSetup(true);
-      setCurrentStep(1);
+      
+      // Show success message and switch to sign-in view
+      setSuccessMessage('Account created successfully! A verification email has been sent to your inbox. Please verify your email before logging in.');
+      setIsRightPanelActive(false); 
       
     } catch (error) {
       console.error('Error signing up:', error);
@@ -123,10 +125,12 @@ const Login = () => {
     }
   };
 
+  // --- 2. Login Handler: Checks for verification status and enforces it ---
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccessMessage('');
 
     try {
       const userCredential = await signInWithEmailAndPassword(
@@ -136,7 +140,24 @@ const Login = () => {
       );
       
       const user = userCredential.user;
-      console.log('User logged in successfully:', user);
+
+      // Check if the user's email is verified
+      if (!user.emailVerified) {
+        
+        // Sign out the unverified user immediately
+        await auth.signOut();
+        
+        // Re-send verification email for user convenience
+        await sendEmailVerification(user);
+        
+        setError('Your email address is not verified. A new verification link has been sent. Please check your inbox and follow the link to log in.');
+        
+        setFormData({ ...formData, loginPassword: '' }); // Clear password for security
+        setLoading(false);
+        return; // Stop the login process
+      }
+
+      console.log('User logged in successfully and email is verified.');
       
       setFormData({
         ...formData,
@@ -144,8 +165,7 @@ const Login = () => {
         loginPassword: ''
       });
       
-      // Let App.jsx handle the redirect based on profile completion status
-      console.log('Login successful - waiting for App.jsx to redirect based on profile completion');
+      // App.jsx handles the redirect if successful and verified
       
     } catch (error) {
       console.error('Error logging in:', error);
@@ -154,8 +174,6 @@ const Login = () => {
         setError('Invalid email or password. Please try again.');
       } else if (error.code === 'auth/user-not-found') {
         setError('No account found with this email. Please sign up first.');
-      } else if (error.code === 'auth/wrong-password') {
-        setError('Incorrect password. Please try again.');
       } else {
         setError(`Login failed: ${error.message}`);
       }
@@ -163,13 +181,48 @@ const Login = () => {
       setLoading(false);
     }
   };
+  
+  // --- 3. Handle Password Reset ---
+  const handlePasswordReset = async () => {
+    const email = formData.loginEmail;
 
+    if (!email) {
+      setError('Please enter your email address in the field above to reset your password.');
+      setSuccessMessage('');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setSuccessMessage('');
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setSuccessMessage(`Password reset link successfully sent to ${email}. Please check your inbox (and spam folder).`);
+      
+      setFormData({ ...formData, loginEmail: '' });
+      
+    } catch (error) {
+      console.error('Error sending password reset email:', error);
+      if (error.code === 'auth/user-not-found') {
+        setError('No account found with that email address.');
+      } else if (error.code === 'auth/invalid-email') {
+        setError('Please enter a valid email address.');
+      } else {
+        setError(`Failed to send reset link: ${error.message}`);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- 4. Handle Profile Setup ---
   const handleSaveProfile = async () => {
     setLoading(true);
     try {
       const user = auth.currentUser;
       if (user) {
-        // Use setDoc to ensure all fields are properly set
+        // Update Firestore document, setting profileCompleted to true
         await setDoc(doc(db, 'users', user.uid), {
           fullName: profileData.fullName,
           email: profileData.email,
@@ -178,13 +231,13 @@ const Login = () => {
           branch: profileData.branch,
           phone: profileData.phone,
           profileCompleted: true,
+          emailVerified: user.emailVerified, 
           createdAt: new Date(),
           updatedAt: new Date()
         });
 
         console.log('Profile completed successfully - App.jsx will detect the change and redirect');
         
-        // Show success message
         setSuccessMessage('Profile completed successfully! Redirecting...');
         
       }
@@ -197,11 +250,25 @@ const Login = () => {
   };
 
   const nextStep = () => {
+    // Basic validation before moving to the next step
+    if (currentStep === 1) {
+      if (!profileData.fullName || !profileData.position || !profileData.department) {
+        setError('Please fill in all employee information fields.');
+        return;
+      }
+    } else if (currentStep === 2) {
+       if (!profileData.branch || !profileData.phone) {
+        setError('Please fill in all contact information fields.');
+        return;
+      }
+    }
     setCurrentStep(prev => prev + 1);
+    setError('');
   };
 
   const prevStep = () => {
     setCurrentStep(prev => prev - 1);
+    setError('');
   };
 
   const handleSignUpClick = () => {
@@ -222,6 +289,8 @@ const Login = () => {
   const backToSignupForm = () => {
     setShowProfileSetup(false);
     setCurrentStep(1);
+    setError('');
+    setSuccessMessage('');
   };
 
   // Profile Setup Steps
@@ -304,6 +373,7 @@ const Login = () => {
                 onChange={handleProfileInputChange}
                 placeholder="Enter your email"
                 required
+                disabled 
               />
             </div>
             
@@ -315,7 +385,7 @@ const Login = () => {
                 name="phone"
                 value={profileData.phone}
                 onChange={handleProfileInputChange}
-                placeholder="Enter your phone number"
+                placeholder="Enter your phone number (e.g., 09XX-XXX-XXXX)"
                 required
               />
             </div>
@@ -330,26 +400,26 @@ const Login = () => {
             <h2>Review & Complete</h2>
             <div className="profile-review">
               <div className="review-item">
-                <strong>Full Name:</strong> {profileData.fullName}
+                <strong>Full Name:</strong> <span>{profileData.fullName}</span>
               </div>
               <div className="review-item">
-                <strong>Position:</strong> {profileData.position}
+                <strong>Position:</strong> <span>{profileData.position}</span>
               </div>
               <div className="review-item">
-                <strong>Department:</strong> {profileData.department}
+                <strong>Department:</strong> <span>{profileData.department}</span>
               </div>
               <div className="review-item">
-                <strong>Branch:</strong> {profileData.branch}
+                <strong>Branch:</strong> <span>{profileData.branch || 'N/A'}</span>
               </div>
               <div className="review-item">
-                <strong>Email:</strong> {profileData.email}
+                <strong>Email:</strong> <span>{profileData.email}</span>
               </div>
               <div className="review-item">
-                <strong>Phone:</strong> {profileData.phone}
+                <strong>Phone:</strong> <span>{profileData.phone}</span>
               </div>
             </div>
             <p className="review-note">
-              You can update this information later from your profile settings.
+              Please ensure all details are correct before completing your profile.
             </p>
           </div>
         );
@@ -362,6 +432,7 @@ const Login = () => {
   return (
     <div className={`login-container ${isRightPanelActive ? 'right-panel-active' : ''} ${showProfileSetup ? 'profile-setup-active' : ''}`}>
       <div className={`container ${isRightPanelActive ? 'right-panel-active' : ''} ${showProfileSetup ? 'profile-setup-active' : ''}`} id="container">
+        
         {/* Sign In Form */}
         <div className="form-container sign-in-container">
           <form onSubmit={handleLogin}>
@@ -370,7 +441,7 @@ const Login = () => {
             <p>Sign in to your SM CRM dashboard</p>
             
             {error && !isRightPanelActive && !showProfileSetup && <div className="error-message">{error}</div>}
-            {successMessage && !isRightPanelActive && <div className="success-message">{successMessage}</div>}
+            {successMessage && !isRightPanelActive && !showProfileSetup && <div className="success-message">{successMessage}</div>}
             
             <input 
               type="email" 
@@ -388,6 +459,16 @@ const Login = () => {
               value={formData.loginPassword}
               onChange={handleInputChange}
             />
+            
+            <button 
+                type="button" 
+                onClick={handlePasswordReset} 
+                className="ghost-text-button" 
+                disabled={loading}
+            >
+                Forgot your password?
+            </button>
+            
             <button type="submit" disabled={loading}>
               {loading ? 'Logging in...' : 'Login'}
             </button>
@@ -402,7 +483,7 @@ const Login = () => {
             <p>Join SM CRM and manage your customers effectively</p>
             
             {error && isRightPanelActive && !showProfileSetup && <div className="error-message">{error}</div>}
-            {successMessage && isRightPanelActive && <div className="success-message">{successMessage}</div>}
+            {successMessage && isRightPanelActive && !showProfileSetup && <div className="success-message">{successMessage}</div>}
             
             <input 
               type="text" 
@@ -463,17 +544,17 @@ const Login = () => {
 
             <div className="form-navigation">
               {currentStep > 1 ? (
-                <button type="button" className="btn-back" onClick={prevStep}>
+                <button type="button" className="btn-back" onClick={prevStep} disabled={loading}>
                   Back
                 </button>
               ) : (
-                <button type="button" className="btn-back" onClick={backToSignupForm}>
+                <button type="button" className="btn-back" onClick={backToSignupForm} disabled={loading}>
                   Back to Sign Up
                 </button>
               )}
               
               {currentStep < 3 ? (
-                <button type="button" className="btn-next" onClick={nextStep}>
+                <button type="button" className="btn-next" onClick={nextStep} disabled={loading}>
                   Next
                 </button>
               ) : (

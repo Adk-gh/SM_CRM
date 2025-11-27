@@ -4,6 +4,8 @@ import {
   AlertCircle, FileText, Paperclip, Send, 
   CheckCircle, Loader2, X, AlertTriangle
 } from 'lucide-react';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../../firebase';
 import './SupportTicketSubmit.css';
 
 const SM_BRANCHES = [
@@ -29,12 +31,6 @@ const ISSUE_CATEGORIES = [
   { value: 'general', label: 'General Inquiry', icon: '❓' }
 ];
 
-const PRIORITIES = [
-  { value: 'low', label: 'Low - General Question' },
-  { value: 'medium', label: 'Medium - Standard Issue' },
-  { value: 'high', label: 'High - Urgent / Blocker' }
-];
-
 const SupportTicketSubmit = () => {
   const fileInputRef = useRef(null);
   const [formData, setFormData] = useState({
@@ -43,7 +39,6 @@ const SupportTicketSubmit = () => {
     userPhone: '',
     smBranch: '',
     issueCategory: '',
-    priority: 'medium',
     issueTitle: '',
     issueDescription: '',
     files: []
@@ -98,18 +93,75 @@ const SupportTicketSubmit = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setUiState(prev => ({ ...prev, loading: true }));
+    setUiState(prev => ({ ...prev, loading: true, message: null }));
 
-    setTimeout(() => {
-      const newTicketId = 'TKT-' + Math.floor(100000 + Math.random() * 900000);
+    try {
+      // Prepare ticket data for Firebase
+      const ticketData = {
+        userName: formData.userName,
+        userEmail: formData.userEmail,
+        userPhone: formData.userPhone,
+        smBranch: formData.smBranch,
+        issueCategory: formData.issueCategory,
+        issueTitle: formData.issueTitle,
+        issueDescription: formData.issueDescription,
+        status: 'open',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        // Store file metadata
+        attachments: formData.files.map(file => ({
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          lastModified: file.lastModified
+        })),
+        // Additional metadata for display
+        branchLabel: SM_BRANCHES.find(b => b.value === formData.smBranch)?.label || 'N/A',
+        categoryLabel: ISSUE_CATEGORIES.find(cat => cat.value === formData.issueCategory)?.label || 'N/A',
+      };
+
+      console.log('Submitting ticket data:', ticketData);
+
+      // Add document to Firestore 'supportTickets' collection
+      const docRef = await addDoc(collection(db, 'supportTickets'), ticketData);
+      
+      // Use the Firestore-generated document ID as ticket ID
+      const newTicketId = docRef.id;
+
+      console.log('Ticket successfully saved with ID:', newTicketId);
+
       setUiState({
         loading: false,
         submitted: true,
         ticketId: newTicketId,
         dragActive: false,
-        message: { type: 'success', text: `Ticket ${newTicketId} submitted successfully!` }
+        message: { 
+          type: 'success', 
+          text: `Ticket ${newTicketId} submitted successfully! We'll get back to you soon.` 
+        }
       });
-    }, 1500);
+
+    } catch (error) {
+      console.error('Error submitting ticket to Firebase:', error);
+      console.error('Error details:', error.code, error.message);
+      
+      let errorMessage = 'Failed to submit ticket. Please try again.';
+      
+      if (error.code === 'permission-denied') {
+        errorMessage = 'Database permission denied. Please check Firebase rules.';
+      } else if (error.code === 'unavailable') {
+        errorMessage = 'Network error. Please check your internet connection.';
+      }
+      
+      setUiState(prev => ({
+        ...prev,
+        loading: false,
+        message: { 
+          type: 'error', 
+          text: errorMessage
+        }
+      }));
+    }
   };
 
   const resetForm = () => {
@@ -119,7 +171,6 @@ const SupportTicketSubmit = () => {
       userPhone: '',
       smBranch: '',
       issueCategory: '',
-      priority: 'medium',
       issueTitle: '',
       issueDescription: '',
       files: []
@@ -300,8 +351,6 @@ const SupportTicketSubmit = () => {
                     ))}
                   </select>
                 </div>
-
-               
 
                 <div className="form-group full-width">
                   <label htmlFor="issueTitle">Subject *</label>

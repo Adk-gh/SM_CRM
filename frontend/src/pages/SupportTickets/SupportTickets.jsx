@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { collection, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../../firebase';
 import './Support.css';
 
 const SupportTickets = () => {
@@ -10,58 +12,50 @@ const SupportTickets = () => {
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
   const [alertType, setAlertType] = useState('success');
-
-  // Mock data
-  const tickets = [
-    { 
-      id: 1001, 
-      subject: 'Email notifications broken', 
-      requester: 'Jane Doe', 
-      priority: 'High', 
-      status: 'Pending', 
-      created: '2024-10-25 10:00 AM', 
-      description: "Users are not receiving any email notifications for ticket updates or new assignments. This started happening approximately one hour ago." 
-    },
-    { 
-      id: 1002, 
-      subject: 'Login flow broken on Safari', 
-      requester: 'Mark Lee', 
-      priority: 'High', 
-      status: 'Pending', 
-      created: '2024-10-25 09:30 AM', 
-      description: "Multiple users reporting that the login button does nothing when using Safari (version 17.x)." 
-    },
-    { 
-      id: 1003, 
-      subject: 'Typo on Contact Us page', 
-      requester: 'Support Team', 
-      priority: 'Low', 
-      status: 'Resolved', 
-      created: '2024-10-24 11:15 AM', 
-      description: "There is a minor spelling mistake in the main paragraph of the contact us section." 
-    },
-    { 
-      id: 1004, 
-      subject: 'Request for API key renewal', 
-      requester: 'External Partner', 
-      priority: 'Medium', 
-      status: 'Pending', 
-      created: '2024-10-24 02:00 PM', 
-      description: "The API key provided to our integration team is set to expire next week. Requesting a renewal key." 
-    },
-    { 
-      id: 1005, 
-      subject: 'Performance lag when running large reports', 
-      requester: 'Admin User', 
-      priority: 'Medium', 
-      status: 'Pending', 
-      created: '2024-10-23 04:45 PM', 
-      description: "Running any report containing more than 50,000 records takes over 3 minutes to complete." 
-    },
-  ];
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const submissionUrl = "https://support.example.com/new-ticket?appId=12345";
   const qrCodeUrl = `https://placehold.co/180x180/6E9FC1/FFFFFF?text=QR+Code`;
+
+  // Fetch tickets from Firebase
+  useEffect(() => {
+    fetchTickets();
+  }, []);
+
+  const fetchTickets = async () => {
+    try {
+      setLoading(true);
+      const querySnapshot = await getDocs(collection(db, 'supportTickets'));
+      const ticketsData = [];
+      
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        ticketsData.push({
+          id: doc.id,
+          ...data,
+          // Convert Firestore timestamp to readable date
+          created: data.createdAt?.toDate?.().toLocaleString() || 'Unknown date',
+          // Ensure all required fields exist
+          subject: data.issueTitle || 'No Subject',
+          requester: data.userName || 'Unknown User',
+          priority: 'Medium', // Default since we removed priority selection
+          status: data.status || 'open',
+          description: data.issueDescription || 'No description provided'
+        });
+      });
+
+      // Sort by creation date (newest first)
+      ticketsData.sort((a, b) => new Date(b.createdAt?.toDate?.()) - new Date(a.createdAt?.toDate?.()));
+      
+      setTickets(ticketsData);
+    } catch (error) {
+      console.error('Error fetching tickets:', error);
+      showAlertMessage('Failed to load tickets from database.', 'danger');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Theme management
   useEffect(() => {
@@ -94,16 +88,41 @@ const SupportTickets = () => {
     setReplyText(reply + '\n\n---\n');
   };
 
-  const submitReply = () => {
+  const submitReply = async () => {
     if (replyText.trim() === '') {
       showAlertMessage('Please enter a response before sending.', 'danger');
       return;
     }
     
-    // Mock submission logic
-    console.log('Sending reply:', replyText);
-    showAlertMessage('Reply sent and ticket resolved (mock action).', 'success');
-    closeModal();
+    try {
+      // Update the ticket in Firebase
+      const ticketRef = doc(db, 'supportTickets', selectedTicket.id);
+      await updateDoc(ticketRef, {
+        status: 'resolved',
+        agentReply: replyText,
+        resolvedAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
+      // Update local state
+      setTickets(prevTickets => 
+        prevTickets.map(ticket => 
+          ticket.id === selectedTicket.id 
+            ? { 
+                ...ticket, 
+                status: 'resolved',
+                agentReply: replyText
+              }
+            : ticket
+        )
+      );
+
+      showAlertMessage('Reply sent and ticket resolved successfully!', 'success');
+      closeModal();
+    } catch (error) {
+      console.error('Error updating ticket:', error);
+      showAlertMessage('Failed to update ticket. Please try again.', 'danger');
+    }
   };
 
   // Alert functions
@@ -128,6 +147,20 @@ const SupportTickets = () => {
       });
   };
 
+  // Calculate statistics for charts
+  const calculateStats = () => {
+    const openTickets = tickets.filter(ticket => ticket.status === 'open');
+    const resolvedTickets = tickets.filter(ticket => ticket.status === 'resolved');
+    
+    return {
+      open: openTickets.length,
+      resolved: resolvedTickets.length,
+      total: tickets.length
+    };
+  };
+
+  const stats = calculateStats();
+
   // Render functions
   const renderPriorityBadge = (priority) => {
     const priorityClass = `priority-${priority.toLowerCase()}`;
@@ -140,9 +173,29 @@ const SupportTickets = () => {
   };
 
   const renderTickets = () => {
+    if (loading) {
+      return (
+        <tr>
+          <td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>
+            <i className="fas fa-spinner fa-spin"></i> Loading tickets...
+          </td>
+        </tr>
+      );
+    }
+
+    if (tickets.length === 0) {
+      return (
+        <tr>
+          <td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>
+            No tickets found. Tickets submitted through the form will appear here.
+          </td>
+        </tr>
+      );
+    }
+
     return tickets.map(ticket => (
       <tr key={ticket.id} onClick={() => openModal(ticket.id)}>
-        <td>#{ticket.id}</td>
+        <td>#{ticket.id.substring(0, 8)}...</td>
         <td>{ticket.subject}</td>
         <td>{ticket.requester}</td>
         <td>{renderPriorityBadge(ticket.priority)}</td>
@@ -161,6 +214,55 @@ const SupportTickets = () => {
         </td>
       </tr>
     ));
+  };
+
+  // Render user submissions from actual tickets
+  const renderUserSubmissions = () => {
+    const recentTickets = tickets.slice(0, 3); // Show 3 most recent tickets
+    
+    if (recentTickets.length === 0) {
+      return (
+        <div className="user-submission-item">
+          <i 
+            className="fas fa-info-circle submission-icon" 
+            style={{color: 'var(--info-color)'}}
+          ></i>
+          <div className="submission-meta">
+            <h4>No recent submissions</h4>
+            <p>Submitted tickets will appear here</p>
+          </div>
+        </div>
+      );
+    }
+
+    return recentTickets.map(ticket => {
+      let icon = 'fas fa-bug';
+      let iconColor = 'var(--danger-color)';
+      
+      if (ticket.issueCategory === 'feature') {
+        icon = 'fas fa-lightbulb';
+        iconColor = 'var(--info-color)';
+      } else if (ticket.issueCategory === 'general') {
+        icon = 'fas fa-question-circle';
+        iconColor = 'var(--warning-color)';
+      }
+
+      return (
+        <div key={ticket.id} className="user-submission-item">
+          <i 
+            className={`${icon} submission-icon`}
+            style={{color: iconColor}}
+          ></i>
+          <div className="submission-meta">
+            <h4>"{ticket.subject}"</h4>
+            <p>Submitted by {ticket.requester} ({ticket.branchLabel || 'Unknown Branch'})</p>
+          </div>
+          <span className="submission-time">
+            {ticket.createdAt?.toDate?.().toLocaleDateString() || 'Recent'}
+          </span>
+        </div>
+      );
+    });
   };
 
   return (
@@ -193,29 +295,36 @@ const SupportTickets = () => {
       <div className="charts-section">
         {/* Card 1: Open Tickets */}
         <div className="chart-card">
-          <h3>Open Tickets</h3>
+          <h3>Ticket Overview</h3>
           <div className="chart-container open-tickets-chart">
-            <div className="bar high">
-              <span className="bar-label">High</span>
+            <div className="bar high" style={{height: `${(stats.open / Math.max(stats.total, 1)) * 100}%`}}>
+              <span className="bar-label">Open ({stats.open})</span>
             </div>
-            <div className="bar medium">
-              <span className="bar-label">Medium</span>
+            <div className="bar resolved" style={{height: `${(stats.resolved / Math.max(stats.total, 1)) * 100}%`}}>
+              <span className="bar-label">Resolved ({stats.resolved})</span>
             </div>
-            <div className="bar low">
-              <span className="bar-label">Low</span>
-            </div>
-            <div className="bar resolved">
-              <span className="bar-label">Resolved</span>
-            </div>
+          </div>
+          <div className="chart-footer">
+            Total Tickets: {stats.total}
           </div>
         </div>
         
         {/* Card 2: Response Time (Simulated Doughnut Chart) */}
         <div className="chart-card">
-          <h3>Avg. Response Time (24h)</h3>
+          <h3>Ticket Categories</h3>
           <div className="chart-container response-time-chart">
-            <div className="doughnut-container"></div>
-            <div className="response-time-display">1h 15m</div>
+            <div className="category-stats">
+              {ISSUE_CATEGORIES.map(cat => {
+                const count = tickets.filter(t => t.issueCategory === cat.value).length;
+                return (
+                  <div key={cat.value} className="category-item">
+                    <span className="category-icon">{cat.icon}</span>
+                    <span className="category-name">{cat.label}</span>
+                    <span className="category-count">({count})</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -274,51 +383,29 @@ const SupportTickets = () => {
       {/* User Submissions Card */}
       <div className="content-card user-submission-card">
         <div className="user-submission-header">
-          <h3>Recent Feedback & Submissions</h3>
+          <h3>Recent Ticket Submissions</h3>
           <p className="user-submission-description">
-            Latest bug reports and feature requests from the last 24 hours.
+            Latest support tickets submitted by users.
           </p>
         </div>
         <div className="user-submission-list">
-          <div className="user-submission-item">
-            <i 
-              className="fas fa-bug submission-icon" 
-              style={{color: 'var(--danger-color)'}}
-            ></i>
-            <div className="submission-meta">
-              <h4>"Checkout button fails intermittently"</h4>
-              <p>Reported by Jane Smith (Customer)</p>
-            </div>
-            <span className="submission-time">2 hours ago</span>
-          </div>
-          <div className="user-submission-item">
-            <i 
-              className="fas fa-lightbulb submission-icon" 
-              style={{color: 'var(--info-color)'}}
-            ></i>
-            <div className="submission-meta">
-              <h4>Feature Request: Dark mode for mobile app</h4>
-              <p>Submitted by Team Alpha (Internal)</p>
-            </div>
-            <span className="submission-time">4 hours ago</span>
-          </div>
-          <div className="user-submission-item">
-            <i 
-              className="fas fa-exclamation-triangle submission-icon" 
-              style={{color: 'var(--warning-color)'}}
-            ></i>
-            <div className="submission-meta">
-              <h4>Latency spikes in US-East servers</h4>
-              <p>Reported by John Doe (Monitor)</p>
-            </div>
-            <span className="submission-time">8 hours ago</span>
-          </div>
+          {renderUserSubmissions()}
         </div>
       </div>
 
       {/* Tickets Table */}
       <div className="content-card ticket-table-container">
-        <h3>Priority Tickets</h3>
+        <div className="ticket-table-header">
+          <h3>All Support Tickets ({tickets.length})</h3>
+          <button 
+            className="action-btn btn-secondary" 
+            onClick={fetchTickets}
+            disabled={loading}
+          >
+            <i className={`fas ${loading ? 'fa-spinner fa-spin' : 'fa-sync'}`}></i> 
+            {loading ? ' Refreshing...' : ' Refresh'}
+          </button>
+        </div>
         <div className="ticket-table-wrapper">
           <table className="ticket-table">
             <thead>
@@ -344,7 +431,7 @@ const SupportTickets = () => {
         <div className="modal-content">
           <div className="modal-header">
             <h3>
-              Ticket #{selectedTicket?.id}: {selectedTicket?.subject}
+              Ticket #{selectedTicket?.id?.substring(0, 8)}...: {selectedTicket?.subject}
             </h3>
             <button className="close-modal" onClick={closeModal}>
               <i className="fas fa-times"></i>
@@ -358,6 +445,24 @@ const SupportTickets = () => {
                   <span className="detail-label">Requester</span>
                   <span className="detail-value">
                     {selectedTicket.requester}
+                  </span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Email</span>
+                  <span className="detail-value">
+                    {selectedTicket.userEmail}
+                  </span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Branch</span>
+                  <span className="detail-value">
+                    {selectedTicket.branchLabel}
+                  </span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Category</span>
+                  <span className="detail-value">
+                    {selectedTicket.categoryLabel}
                   </span>
                 </div>
                 <div className="detail-item">
@@ -430,7 +535,7 @@ const SupportTickets = () => {
                   Cancel
                 </button>
                 <button className="btn btn-primary" onClick={submitReply}>
-                  Send Reply & Resolve
+                  {selectedTicket.status === 'resolved' ? 'Update Reply' : 'Send Reply & Resolve'}
                 </button>
               </div>
             </>
@@ -440,5 +545,15 @@ const SupportTickets = () => {
     </div>
   );
 };
+
+// Add the ISSUE_CATEGORIES constant at the bottom
+const ISSUE_CATEGORIES = [
+  { value: 'technical', label: 'Technical Issue', icon: '💻' },
+  { value: 'billing', label: 'Billing & Payments', icon: '💳' },
+  { value: 'access', label: 'Account Access', icon: '🔐' },
+  { value: 'feature', label: 'Feature Request', icon: '✨' },
+  { value: 'bug', label: 'Report a Bug', icon: '🐛' },
+  { value: 'general', label: 'General Inquiry', icon: '❓' }
+];
 
 export default SupportTickets;
