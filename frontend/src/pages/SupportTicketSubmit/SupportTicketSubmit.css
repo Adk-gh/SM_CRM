@@ -1,24 +1,74 @@
 :root {
-  --primary: #4c51bf;
-  --primary-dark: #434190;
-  --primary-light: #667eea;
-  --primary-bg: #f0f4ff;
-  --success: #38a169;
-  --success-dark: #2f855a;
-  --error: #e53e3e;
-  --warning: #d69e2e;
-  --gray-50: #f9fafb;
-  --gray-100: #f7fafc;
-  --gray-200: #edf2f7;
-  --gray-300: #e2e8f0;
-  --gray-400: #cbd5e0;
-  --gray-500: #a0aec0;
-  --gray-600: #718096;
-  --gray-700: #4a5568;
-  --gray-800: #2d3748;
-  --gray-900: #1a202c;
+  /* Light Theme */
+  --bg-primary: #E9ECEE;
+  --bg-secondary: #F4F4F4;
+  --bg-sidebar: linear-gradient(135deg, #395A7F, #6E9FC1);
+  --text-primary: #395A7F;
+  --text-secondary: #6E9FC1;
+  --text-light: #7A7A7A;
+  --accent-primary: #395A7F; /* Original --primary */
+  --accent-secondary: #6E9FC1; /* Original --primary-light */
+  --accent-dark: #2F4D69; /* Custom dark for hover/shadow (Original --primary-dark) */
+  --accent-light: #A3CAE9; /* Original --primary-bg */
+  --border-light: #D1D5DB; /* Closer to original --gray-300 */
+  --card-bg: #FFFFFF;
+  --card-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  --card-hover: 0 10px 25px rgba(0, 0, 0, 0.12);
+  --success-color: #48BB78; /* Original --success */
+  --success-dark: #389E62; /* Custom dark for success hover (Original --success-dark) */
+  --warning-color: #F6AD55; /* Original --warning */
+  --danger-color: #F56565; /* Original --error */
+  
+  /* Mapped Grays based on original usage/shades */
+  --gray-50: var(--bg-secondary); /* F4F4F4 */
+  --gray-100: #F7FAF9; /* Retained or approximated */
+  --gray-200: var(--border-light); /* D1D5DB */
+  --gray-300: var(--border-light); /* D1D5DB */
+  --gray-400: #A0AEC0; /* Custom for hover */
+  --gray-500: var(--text-light); /* 7A7A7A */
+  --gray-600: var(--text-light); /* 7A7A7A */
+  --gray-700: #57789B; /* Custom slightly lighter than primary */
+  --gray-800: var(--text-primary); /* 395A7F */
+  --gray-900: #1A202C; /* Retained or approximated */
   --shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="dark"] {
+  /* Dark Theme variables from your code */
+  --bg-primary: #1E2A38;
+  --bg-secondary: #2C3E50;
+  --bg-sidebar: linear-gradient(135deg, var(--accent-dark), var(--accent-primary));
+  --text-primary: #E9ECEE;
+  --text-secondary: #A3CAE9;
+  --text-light: #B0B0B0;
+  --accent-primary: #63B3ED; /* Adjusted primary in dark mode to be distinct */
+  --accent-secondary: #68D391; /* Adjusted light/secondary accent */
+  --accent-dark: #4299E1; /* Custom dark for hover/shadow */
+  --accent-light: #4299E1;
+  --border-light: #4A5568;
+  
+  /* Inputs will use the darker primary background for contrast */
+  --card-bg: var(--bg-primary); 
+  
+  --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --card-hover: 0 10px 30px rgba(0, 0, 0, 0.4);
+  --success-color: #68D391;
+  --warning-color: #FBD38D;
+  --danger-color: #FC8181;
+  --info-color: #63B3ED;
+  
+  /* Dark Mode Gray Mappings for Ticket Styles */
+  --gray-50: var(--bg-secondary);
+  --gray-200: var(--border-light);
+  --gray-300: var(--border-light);
+  --gray-400: #A0AEC0;
+  --gray-500: var(--text-light);
+  --gray-600: var(--text-light);
+  --gray-700: var(--text-secondary);
+  --gray-800: var(--text-primary);
+  --shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
 
 * {
@@ -29,9 +79,10 @@
 
 .support-ticket-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, var(--gray-50) 0%, var(--primary-bg) 100%);
+  /* Set the default light mode background gradient */
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--accent-light) 100%); 
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-  color: var(--gray-800);
+  color: var(--text-primary); /* Uses text-primary */
   line-height: 1.6;
   padding: 20px;
   display: flex;
@@ -40,8 +91,15 @@
   justify-content: center;
 }
 
+/* Fix the overall background and main text color for dark mode */
+[data-theme="dark"] .support-ticket-container {
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  color: var(--text-primary);
+}
+
+
 .ticket-container {
-  background: white;
+  background: var(--card-bg); /* Uses card-bg */
   border-radius: 16px;
   box-shadow: var(--shadow-lg);
   overflow: hidden;
@@ -50,11 +108,17 @@
   display: flex;
   flex-direction: column;
   max-height: 90vh;
-  border: 1px solid var(--gray-200);
+  border: 1px solid var(--border-light); /* Uses border-light */
+}
+
+/* FIX: Explicitly set the background for the outer card container in dark mode for certainty */
+[data-theme="dark"] .ticket-container {
+    background: var(--card-bg); 
 }
 
 .ticket-header {
-  background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
+  /* Updated to use new accent variables */
+  background: linear-gradient(135deg, var(--accent-secondary) 0%, var(--accent-primary) 100%); 
   color: white;
   padding: 32px 40px;
   text-align: center;
@@ -89,19 +153,28 @@
   padding: 40px;
   overflow-y: auto;
   flex-grow: 1;
-  background: var(--gray-50);
+  background: var(--bg-secondary); /* Uses bg-secondary (form background) */
+}
+
+/* FIX: Explicitly set the background for the inner form content in dark mode */
+[data-theme="dark"] .ticket-content {
+    background: var(--bg-secondary); 
 }
 
 .ticket-form {
   display: flex;
   flex-direction: column;
   gap: 0;
+  /* FIX: Explicitly set background for the form container */
+  background: var(--bg-secondary); 
 }
 
 .form-section {
   margin-bottom: 40px;
   padding-bottom: 32px;
-  border-bottom: 1px solid var(--gray-200);
+  border-bottom: 1px solid var(--border-light); /* Uses border-light */
+  /* FIX: Ensure form sections inherit the correct dark background */
+  background: var(--bg-secondary); 
 }
 
 .form-section:last-of-type {
@@ -112,19 +185,19 @@
 .form-section-title {
   font-size: 1.4rem;
   font-weight: 700;
-  color: var(--gray-800);
+  color: var(--text-primary); /* Uses text-primary */
   margin-bottom: 24px;
   display: flex;
   align-items: center;
   gap: 12px;
   padding-bottom: 12px;
-  border-bottom: 2px solid var(--primary-bg);
+  border-bottom: 2px solid var(--accent-light); /* Uses accent-light */
 }
 
 .section-icon {
   width: 24px;
   height: 24px;
-  color: var(--primary);
+  color: var(--accent-primary); /* Uses accent-primary */
 }
 
 .form-grid {
@@ -146,7 +219,7 @@
 .form-group label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--gray-700);
+  color: var(--gray-700); /* Uses mapped gray-700 */
   margin-bottom: 8px;
   letter-spacing: 0.025em;
 }
@@ -155,28 +228,45 @@
 .form-group select,
 .form-group textarea {
   padding: 12px 16px;
-  border: 1px solid var(--gray-300);
+  border: 1px solid var(--border-light); /* Uses border-light */
   border-radius: 12px;
   font-size: 1rem;
   font-family: inherit;
-  background: white;
+  background: var(--card-bg); /* Uses card-bg (switches to dark in dark mode) */
   transition: all 0.2s ease;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  
+  /* Ensures the actual typed text is theme-aware */
+  color: var(--text-primary); 
 }
+
+/* Placeholder text color for light theme */
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: var(--gray-500); 
+}
+
+/* Placeholder text color for dark theme */
+[data-theme="dark"] .form-group input::placeholder,
+[data-theme="dark"] .form-group textarea::placeholder {
+  color: var(--gray-500);
+}
+
 
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(76, 81, 191, 0.1);
+  border-color: var(--accent-primary); /* Uses accent-primary */
+  /* Updated box-shadow to use accent-primary color */
+  box-shadow: 0 0 0 3px rgba(57, 90, 127, 0.1); 
   transform: translateY(-1px);
 }
 
 .form-group input:hover,
 .form-group select:hover,
 .form-group textarea:hover {
-  border-color: var(--gray-400);
+  border-color: var(--gray-400); /* Uses mapped gray-400 */
 }
 
 .form-group textarea {
@@ -187,6 +277,7 @@
 
 .form-group select {
   appearance: none;
+  /* You'd need to update the SVG fill color if you want the arrow to change */
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
   background-position: right 12px center;
   background-repeat: no-repeat;
@@ -195,27 +286,27 @@
 }
 
 .file-drop-zone {
-  border: 2px dashed var(--gray-300);
+  border: 2px dashed var(--border-light); /* Uses border-light */
   border-radius: 12px;
   padding: 32px 24px;
   text-align: center;
   cursor: pointer;
   transition: all 0.3s ease;
-  background: white;
+  background: var(--card-bg); /* Uses card-bg */
   margin-bottom: 16px;
 }
 
 .file-drop-zone.active,
 .file-drop-zone:hover {
-  border-color: var(--primary);
-  background-color: var(--primary-bg);
+  border-color: var(--accent-primary); /* Uses accent-primary */
+  background-color: var(--accent-light); /* Uses accent-light */
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .file-drop-icon {
   margin-bottom: 12px;
-  color: var(--primary);
+  color: var(--accent-primary); /* Uses accent-primary */
 }
 
 .file-icon {
@@ -225,19 +316,19 @@
 
 .file-drop-text {
   font-size: 1rem;
-  color: var(--gray-700);
+  color: var(--gray-700); /* Uses mapped gray-700 */
   font-weight: 500;
   margin-bottom: 8px;
 }
 
 .file-drop-cta {
-  color: var(--primary);
+  color: var(--accent-primary); /* Uses accent-primary */
   font-weight: 600;
 }
 
 .file-drop-hint {
   font-size: 0.875rem;
-  color: var(--gray-500);
+  color: var(--gray-500); /* Uses mapped gray-500 */
   font-weight: 400;
 }
 
@@ -256,15 +347,15 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  background: white;
-  border: 1px solid var(--gray-200);
+  background: var(--card-bg); /* Uses card-bg */
+  border: 1px solid var(--border-light); /* Uses border-light */
   border-radius: 12px;
   transition: all 0.2s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .file-list-item:hover {
-  border-color: var(--primary-light);
+  border-color: var(--accent-secondary); /* Uses accent-secondary */
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
@@ -279,18 +370,18 @@
 .file-item-icon {
   width: 20px;
   height: 20px;
-  color: var(--gray-500);
+  color: var(--gray-500); /* Uses mapped gray-500 */
 }
 
 .file-name {
   font-size: 0.9rem;
-  color: var(--gray-700);
+  color: var(--gray-700); /* Uses mapped gray-700 */
 }
 
 .file-remove-btn {
   background: none;
   border: none;
-  color: var(--error);
+  color: var(--danger-color); /* Uses danger-color */
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -300,7 +391,8 @@
 }
 
 .file-remove-btn:hover {
-  background: rgba(229, 62, 62, 0.1);
+  /* Updated to use danger-color */
+  background: rgba(245, 101, 101, 0.1); 
   transform: scale(1.1);
 }
 
@@ -312,7 +404,8 @@
 .submit-btn {
   border-radius: 12px;
   border: none;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  /* Updated to use new accent variables */
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-dark) 100%); 
   color: white;
   font-size: 1rem;
   font-weight: 600;
@@ -326,13 +419,15 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  box-shadow: 0 4px 12px rgba(76, 81, 191, 0.2);
+  /* Updated box-shadow to use accent-primary color */
+  box-shadow: 0 4px 12px rgba(57, 90, 127, 0.2); 
 }
 
 .submit-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(76, 81, 191, 0.3);
-  background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
+  /* Updated box-shadow and background to use new accent variables */
+  box-shadow: 0 6px 20px rgba(57, 90, 127, 0.3); 
+  background: linear-gradient(135deg, var(--accent-secondary) 0%, var(--accent-primary) 100%);
 }
 
 .submit-btn:disabled {
@@ -361,9 +456,9 @@
 .ticket-footer {
   text-align: center;
   padding: 24px;
-  color: var(--gray-600);
-  background: white;
-  border-top: 1px solid var(--gray-200);
+  color: var(--gray-600); /* Uses mapped gray-600 */
+  background: var(--card-bg); /* Uses card-bg */
+  border-top: 1px solid var(--border-light); /* Uses border-light */
   flex-shrink: 0;
 }
 
@@ -388,31 +483,31 @@
 .success-icon-large {
   width: 80px;
   height: 80px;
-  color: var(--success);
+  color: var(--success-color); /* Uses success-color */
 }
 
 .success-message h2 {
-  color: var(--gray-800);
+  color: var(--text-primary); /* Uses text-primary */
   font-size: 1.75rem;
   font-weight: 700;
   margin-bottom: 16px;
 }
 
 .success-message p {
-  color: var(--gray-600);
+  color: var(--gray-600); /* Uses mapped gray-600 */
   font-size: 1.1rem;
   margin-bottom: 24px;
   line-height: 1.6;
 }
 
 .ticket-id-display {
-  background: var(--primary-bg);
+  background: var(--accent-light); /* Uses accent-light */
   padding: 20px;
   border-radius: 12px;
   margin: 24px 0;
   font-weight: 700;
-  color: var(--primary);
-  border-left: 4px solid var(--primary);
+  color: var(--accent-primary); /* Uses accent-primary */
+  border-left: 4px solid var(--accent-primary); /* Uses accent-primary */
   font-size: 1.2rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
@@ -432,30 +527,32 @@
 
 .detail-label {
   font-size: 0.875rem;
-  color: var(--gray-500);
+  color: var(--gray-500); /* Uses mapped gray-500 */
   font-weight: 500;
 }
 
 .detail-value {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--gray-800);
+  color: var(--text-primary); /* Uses text-primary */
 }
 
 .status-open {
-  color: var(--success);
+  color: var(--success-color); /* Uses success-color */
 }
 
-
-
 .btn-success {
-  background: linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%);
-  box-shadow: 0 4px 12px rgba(56, 161, 105, 0.2);
+  /* Updated to use new success variables */
+  background: linear-gradient(135deg, var(--success-color) 0%, var(--success-dark) 100%); 
+  /* Updated box-shadow to use success-color */
+  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.2); 
 }
 
 .btn-success:hover:not(:disabled) {
-  background: linear-gradient(135deg, #48bb78 0%, var(--success) 100%);
-  box-shadow: 0 6px 20px rgba(56, 161, 105, 0.3);
+  /* Updated to use new success variables */
+  background: linear-gradient(135deg, var(--success-color) 0%, var(--success-color) 100%); 
+  /* Updated box-shadow to use success-color */
+  box-shadow: 0 6px 20px rgba(72, 187, 120, 0.3); 
 }
 
 /* Message Notification */
@@ -486,12 +583,12 @@
 }
 
 .message-success {
-  background: var(--success);
+  background: var(--success-color); /* Uses success-color */
   color: white;
 }
 
 .message-error {
-  background: var(--error);
+  background: var(--danger-color); /* Uses danger-color */
   color: white;
 }
 

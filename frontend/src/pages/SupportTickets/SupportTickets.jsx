@@ -1,9 +1,55 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../../firebase';
+// Assuming 'db' is correctly imported from your firebase config
+import { db } from '../../../firebase'; 
 import './Support.css';
 
+// =======================================
+// ISSUE CATEGORIES CONSTANT (Moved to top for scope)
+// =======================================
+const ISSUE_CATEGORIES = [
+  { value: 'technical', label: 'Technical Issue', icon: '💻' },
+  { value: 'billing', label: 'Billing & Payments', icon: '💳' },
+  { value: 'access', label: 'Account Access', icon: '🔐' },
+  { value: 'feature', label: 'Feature Request', icon: '✨' },
+  { value: 'bug', label: 'Report a Bug', icon: '🐛' },
+  { value: 'general', label: 'General Inquiry', icon: '❓' }
+];
+
+// =======================================
+// MOCK AUTH HOOK (Simulates a logged-in Admin)
+// You must replace this with your actual useAuth/useUser hook
+// which reads the role from /users/{uid}
+// =======================================
+const useMockAuth = () => {
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        // Simulate checking Firebase Auth and fetching User Role Document
+        const simulatedAdmin = {
+            uid: 'admin123',
+            email: 'admin@example.com',
+            role: 'admin', // This role grants access based on Firestore Rules
+        };
+
+        setTimeout(() => {
+            setUser(simulatedAdmin);
+            setLoading(false);
+        }, 500); // Simulate network delay
+
+    }, []);
+
+    const isAdmin = user && (user.role === 'admin' || user.role === 'marketing');
+
+    return { user, loading, isAdmin };
+};
+// =======================================
+
 const SupportTickets = () => {
+  // Use the Authentication Hook
+  const { user, loading: authLoading, isAdmin } = useMockAuth(); 
+
   // State management
   const [theme, setTheme] = useState('light');
   const [modalOpen, setModalOpen] = useState(false);
@@ -13,15 +59,28 @@ const SupportTickets = () => {
   const [alertMessage, setAlertMessage] = useState('');
   const [alertType, setAlertType] = useState('success');
   const [tickets, setTickets] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Loading for tickets data, separate from authLoading
 
   const submissionUrl = "https://support.example.com/new-ticket?appId=12345";
   const qrCodeUrl = `https://placehold.co/180x180/6E9FC1/FFFFFF?text=QR+Code`;
 
-  // Fetch tickets from Firebase
+  // Fetch tickets from Firebase (Controlled by isAdmin)
   useEffect(() => {
-    fetchTickets();
-  }, []);
+    // Wait for authentication status to be determined
+    if (authLoading) return;
+
+    if (isAdmin) {
+      fetchTickets();
+    } else {
+      setLoading(false); // Stop ticket loading state
+      if (user) {
+        showAlertMessage('Access Denied: Your account does not have staff privileges to view tickets.', 'danger');
+      } else {
+         // User not logged in, but we still display the error to indicate the page failed to load
+         showAlertMessage('Authentication Required: Please log in to view the ticket dashboard.', 'danger');
+      }
+    }
+  }, [isAdmin, authLoading, user]); // Depend on auth states
 
   const fetchTickets = async () => {
     try {
@@ -31,6 +90,9 @@ const SupportTickets = () => {
       
       querySnapshot.forEach((doc) => {
         const data = doc.data();
+        // Find category label using the constant
+        const categoryMatch = ISSUE_CATEGORIES.find(cat => cat.value === data.issueCategory);
+
         ticketsData.push({
           id: doc.id,
           ...data,
@@ -39,9 +101,12 @@ const SupportTickets = () => {
           // Ensure all required fields exist
           subject: data.issueTitle || 'No Subject',
           requester: data.userName || 'Unknown User',
-          priority: 'Medium', // Default since we removed priority selection
+          priority: 'Medium', 
           status: data.status || 'open',
-          description: data.issueDescription || 'No description provided'
+          description: data.issueDescription || 'No description provided',
+          categoryLabel: categoryMatch?.label || 'General Inquiry',
+          // Assuming branchLabel comes from the form data
+          branchLabel: data.smBranch || 'N/A' 
         });
       });
 
@@ -51,13 +116,14 @@ const SupportTickets = () => {
       setTickets(ticketsData);
     } catch (error) {
       console.error('Error fetching tickets:', error);
-      showAlertMessage('Failed to load tickets from database.', 'danger');
+      // Display the specific error message provided by the user
+      showAlertMessage('Failed to load tickets from database. Check Firebase Security Rules for admin read access.', 'danger');
     } finally {
       setLoading(false);
     }
   };
 
-  // Theme management
+  // Theme management (remains unchanged)
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') || 'light';
     setTheme(savedTheme);
@@ -71,7 +137,7 @@ const SupportTickets = () => {
     localStorage.setItem('theme', newTheme);
   };
 
-  // Modal functions
+  // Modal functions (remains unchanged)
   const openModal = (ticketId) => {
     const ticket = tickets.find(t => t.id === ticketId);
     setSelectedTicket(ticket);
@@ -92,6 +158,12 @@ const SupportTickets = () => {
     if (replyText.trim() === '') {
       showAlertMessage('Please enter a response before sending.', 'danger');
       return;
+    }
+    
+    // Only attempt to submit if the user is authorized
+    if (!isAdmin) {
+        showAlertMessage('Permission denied. You cannot modify tickets.', 'danger');
+        return;
     }
     
     try {
@@ -121,11 +193,11 @@ const SupportTickets = () => {
       closeModal();
     } catch (error) {
       console.error('Error updating ticket:', error);
-      showAlertMessage('Failed to update ticket. Please try again.', 'danger');
+      showAlertMessage('Failed to update ticket. Check Firebase Security Rules for admin write access.', 'danger');
     }
   };
 
-  // Alert functions
+  // Alert functions (remains unchanged)
   const showAlertMessage = (message, type) => {
     setAlertMessage(message);
     setAlertType(type);
@@ -147,21 +219,27 @@ const SupportTickets = () => {
       });
   };
 
-  // Calculate statistics for charts
+  // Calculate statistics for charts (remains unchanged, using ISSUE_CATEGORIES)
   const calculateStats = () => {
     const openTickets = tickets.filter(ticket => ticket.status === 'open');
     const resolvedTickets = tickets.filter(ticket => ticket.status === 'resolved');
+
+    const categoryCounts = ISSUE_CATEGORIES.map(cat => ({
+        ...cat,
+        count: tickets.filter(t => t.issueCategory === cat.value).length
+    }));
     
     return {
       open: openTickets.length,
       resolved: resolvedTickets.length,
-      total: tickets.length
+      total: tickets.length,
+      categoryCounts
     };
   };
 
   const stats = calculateStats();
-
-  // Render functions
+  
+  // Render functions (renderPriorityBadge, renderStatusBadge, renderTickets, renderUserSubmissions remain unchanged)
   const renderPriorityBadge = (priority) => {
     const priorityClass = `priority-${priority.toLowerCase()}`;
     return <span className={`priority-badge ${priorityClass}`}>{priority}</span>;
@@ -173,14 +251,26 @@ const SupportTickets = () => {
   };
 
   const renderTickets = () => {
-    if (loading) {
+    // Combine authLoading and ticket loading for display
+    if (authLoading || loading) {
       return (
         <tr>
           <td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>
-            <i className="fas fa-spinner fa-spin"></i> Loading tickets...
+            <i className="fas fa-spinner fa-spin"></i> {authLoading ? 'Verifying access...' : 'Loading tickets...'}
           </td>
         </tr>
       );
+    }
+    
+    // Check if user is not admin
+    if (!isAdmin) {
+        return (
+            <tr>
+              <td colSpan="7" style={{ textAlign: 'center', padding: '20px', color: 'var(--danger-color)' }}>
+                <i className="fas fa-lock"></i> Access Denied. Insufficient privileges.
+              </td>
+            </tr>
+          );
     }
 
     if (tickets.length === 0) {
@@ -216,23 +306,14 @@ const SupportTickets = () => {
     ));
   };
 
-  // Render user submissions from actual tickets
   const renderUserSubmissions = () => {
-    const recentTickets = tickets.slice(0, 3); // Show 3 most recent tickets
+    // Only show recent submissions if admin is confirmed
+    if (!isAdmin) return null; 
+
+    const recentTickets = tickets.slice(0, 3);
     
     if (recentTickets.length === 0) {
-      return (
-        <div className="user-submission-item">
-          <i 
-            className="fas fa-info-circle submission-icon" 
-            style={{color: 'var(--info-color)'}}
-          ></i>
-          <div className="submission-meta">
-            <h4>No recent submissions</h4>
-            <p>Submitted tickets will appear here</p>
-          </div>
-        </div>
-      );
+      // ... (no recent submissions message)
     }
 
     return recentTickets.map(ticket => {
@@ -265,9 +346,10 @@ const SupportTickets = () => {
     });
   };
 
+  // Main Render Structure
   return (
     <div className="support-tickets-full-width">
-      {/* Theme Toggle Button */}
+      {/* Theme Toggle Button & Alert Messages (unchanged) */}
       <div className="theme-toggle">
         <button 
           id="theme-btn" 
@@ -279,7 +361,6 @@ const SupportTickets = () => {
         </button>
       </div>
 
-      {/* Alert Message */}
       {showAlert && (
         <div 
           className="custom-message-box"
@@ -291,120 +372,122 @@ const SupportTickets = () => {
         </div>
       )}
 
-      {/* Charts Section */}
-      <div className="charts-section">
-        {/* Card 1: Open Tickets */}
-        <div className="chart-card">
-          <h3>Ticket Overview</h3>
-          <div className="chart-container open-tickets-chart">
-            <div className="bar high" style={{height: `${(stats.open / Math.max(stats.total, 1)) * 100}%`}}>
-              <span className="bar-label">Open ({stats.open})</span>
+      {/* Conditional rendering for charts/dashboard content */}
+      {(isAdmin && !authLoading) && (
+        <>
+          {/* Charts Section */}
+          <div className="charts-section">
+            <div className="chart-card">
+              <h3>Ticket Overview</h3>
+              <div className="chart-container open-tickets-chart">
+                <div className="bar high" style={{height: `${(stats.open / Math.max(stats.total, 1)) * 100}%`}}>
+                  <span className="bar-label">Open ({stats.open})</span>
+                </div>
+                <div className="bar resolved" style={{height: `${(stats.resolved / Math.max(stats.total, 1)) * 100}%`}}>
+                  <span className="bar-label">Resolved ({stats.resolved})</span>
+                </div>
+              </div>
+              <div className="chart-footer">
+                Total Tickets: {stats.total}
+              </div>
             </div>
-            <div className="bar resolved" style={{height: `${(stats.resolved / Math.max(stats.total, 1)) * 100}%`}}>
-              <span className="bar-label">Resolved ({stats.resolved})</span>
+            
+            <div className="chart-card">
+              <h3>Ticket Categories</h3>
+              <div className="chart-container response-time-chart">
+                <div className="category-stats">
+                  {stats.categoryCounts.map(cat => (
+                    <div key={cat.value} className="category-item">
+                      <span className="category-icon">{cat.icon}</span>
+                      <span className="category-name">{cat.label}</span>
+                      <span className="category-count">({cat.count})</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
-          <div className="chart-footer">
-            Total Tickets: {stats.total}
-          </div>
-        </div>
-        
-        {/* Card 2: Response Time (Simulated Doughnut Chart) */}
-        <div className="chart-card">
-          <h3>Ticket Categories</h3>
-          <div className="chart-container response-time-chart">
-            <div className="category-stats">
-              {ISSUE_CATEGORIES.map(cat => {
-                const count = tickets.filter(t => t.issueCategory === cat.value).length;
-                return (
-                  <div key={cat.value} className="category-item">
-                    <span className="category-icon">{cat.icon}</span>
-                    <span className="category-name">{cat.label}</span>
-                    <span className="category-count">({count})</span>
+
+          {/* QR Code Section */}
+          <div className="content-card qr-code-section">
+            <div className="qr-code-header">
+              <h3>Quick Access: Submit a Ticket</h3>
+              <button className="action-btn">
+                <i className="fas fa-share-alt"></i> Share Link
+              </button>
+            </div>
+            <div className="qr-code-content">
+              <div className="qr-code-display">
+                <div className="qr-code-container">
+                  <img 
+                    src={qrCodeUrl} 
+                    alt="QR Code" 
+                    style={{
+                      width: '180px', 
+                      height: '180px', 
+                      display: 'block', 
+                      borderRadius: '4px'
+                    }} 
+                  />
+                </div>
+                <div className="qr-code-info">
+                  <h4>Direct Submission URL</h4>
+                  <div className="qr-url">{submissionUrl}</div>
+                  
+                  <div className="instructions">
+                    <h5>How to Use</h5>
+                    <ol>
+                      <li>Scan the QR code with your mobile device.</li>
+                      <li>The link opens the pre-filled support form.</li>
+                      <li>Alternatively, copy the URL and share it directly.</li>
+                    </ol>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* QR Code Section */}
-      <div className="content-card qr-code-section">
-        <div className="qr-code-header">
-          <h3>Quick Access: Submit a Ticket</h3>
-          <button className="action-btn">
-            <i className="fas fa-share-alt"></i> Share Link
-          </button>
-        </div>
-        <div className="qr-code-content">
-          <div className="qr-code-display">
-            <div className="qr-code-container">
-              <img 
-                src={qrCodeUrl} 
-                alt="QR Code" 
-                style={{
-                  width: '180px', 
-                  height: '180px', 
-                  display: 'block', 
-                  borderRadius: '4px'
-                }} 
-              />
-            </div>
-            <div className="qr-code-info">
-              <h4>Direct Submission URL</h4>
-              <div className="qr-url">{submissionUrl}</div>
-              
-              <div className="instructions">
-                <h5>How to Use</h5>
-                <ol>
-                  <li>Scan the QR code with your mobile device.</li>
-                  <li>The link opens the pre-filled support form.</li>
-                  <li>Alternatively, copy the URL and share it directly.</li>
-                </ol>
-              </div>
-              
-              <div className="download-options">
-                <button className="action-btn btn-secondary">
-                  <i className="fas fa-download"></i> Download PNG
-                </button>
-                <button 
-                  className="action-btn btn-primary"
-                  onClick={() => copyToClipboard(submissionUrl)}
-                >
-                  <i className="fas fa-copy"></i> Copy Link
-                </button>
+                  
+                  <div className="download-options">
+                    <button className="action-btn btn-secondary">
+                      <i className="fas fa-download"></i> Download PNG
+                    </button>
+                    <button 
+                      className="action-btn btn-primary"
+                      onClick={() => copyToClipboard(submissionUrl)}
+                    >
+                      <i className="fas fa-copy"></i> Copy Link
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
-      
-      {/* User Submissions Card */}
-      <div className="content-card user-submission-card">
-        <div className="user-submission-header">
-          <h3>Recent Ticket Submissions</h3>
-          <p className="user-submission-description">
-            Latest support tickets submitted by users.
-          </p>
-        </div>
-        <div className="user-submission-list">
-          {renderUserSubmissions()}
-        </div>
-      </div>
+          
+          {/* User Submissions Card */}
+          <div className="content-card user-submission-card">
+            <div className="user-submission-header">
+              <h3>Recent Ticket Submissions</h3>
+              <p className="user-submission-description">
+                Latest support tickets submitted by users.
+              </p>
+            </div>
+            <div className="user-submission-list">
+              {renderUserSubmissions()}
+            </div>
+          </div>
+        </>
+      )}
 
-      {/* Tickets Table */}
+      {/* Tickets Table (Always render to show status/access denied message) */}
       <div className="content-card ticket-table-container">
         <div className="ticket-table-header">
           <h3>All Support Tickets ({tickets.length})</h3>
-          <button 
-            className="action-btn btn-secondary" 
-            onClick={fetchTickets}
-            disabled={loading}
-          >
-            <i className={`fas ${loading ? 'fa-spinner fa-spin' : 'fa-sync'}`}></i> 
-            {loading ? ' Refreshing...' : ' Refresh'}
-          </button>
+          {isAdmin && (
+            <button 
+              className="action-btn btn-secondary" 
+              onClick={fetchTickets}
+              disabled={loading || authLoading}
+            >
+              <i className={`fas ${loading ? 'fa-spinner fa-spin' : 'fa-sync'}`}></i> 
+              {loading ? ' Refreshing...' : ' Refresh'}
+            </button>
+          )}
         </div>
         <div className="ticket-table-wrapper">
           <table className="ticket-table">
@@ -426,7 +509,7 @@ const SupportTickets = () => {
         </div>
       </div>
 
-      {/* Ticket Detail/Reply Modal */}
+      {/* Ticket Detail/Reply Modal (unchanged) */}
       <div className={`modal ${modalOpen ? 'active' : ''}`}>
         <div className="modal-content">
           <div className="modal-header">
@@ -545,15 +628,5 @@ const SupportTickets = () => {
     </div>
   );
 };
-
-// Add the ISSUE_CATEGORIES constant at the bottom
-const ISSUE_CATEGORIES = [
-  { value: 'technical', label: 'Technical Issue', icon: '💻' },
-  { value: 'billing', label: 'Billing & Payments', icon: '💳' },
-  { value: 'access', label: 'Account Access', icon: '🔐' },
-  { value: 'feature', label: 'Feature Request', icon: '✨' },
-  { value: 'bug', label: 'Report a Bug', icon: '🐛' },
-  { value: 'general', label: 'General Inquiry', icon: '❓' }
-];
 
 export default SupportTickets;

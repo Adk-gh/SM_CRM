@@ -12,7 +12,6 @@ const CustomerProfile = () => {
   
   // Search and filter states
   const [customerSearch, setCustomerSearch] = useState('');
-  const [customerFilter, setCustomerFilter] = useState('all');
   const [purchaseSearch, setPurchaseSearch] = useState('');
   const [purchaseBranchFilter, setPurchaseBranchFilter] = useState('all');
   const [purchaseStoreFilter, setPurchaseStoreFilter] = useState('all');
@@ -21,7 +20,6 @@ const CustomerProfile = () => {
   const [feedbackStoreFilter, setFeedbackStoreFilter] = useState('all');
   const [interactionSearch, setInteractionSearch] = useState('');
   const [interactionTypeFilter, setInteractionTypeFilter] = useState('all');
-  const [editModalOpen, setEditModalOpen] = useState(false);
 
   // Chart refs
   const purchaseChartRef = useRef(null);
@@ -31,14 +29,12 @@ const CustomerProfile = () => {
   // Chart instances
   const [charts, setCharts] = useState({});
 
-  // Customer data with only essential information
+  // Customer data
   const customers = [
     {
       id: "cust_001",
       fullName: "Juan Dela Cruz",
       email: "juan@example.com",
-      loyaltyLevel: "Gold",
-      loyaltyPoints: 1250,
       createdAt: "2022-01-15",
       avatar: "JD",
       purchases: [
@@ -96,8 +92,6 @@ const CustomerProfile = () => {
       id: "cust_002",
       fullName: "Maria Santos",
       email: "maria@example.com",
-      loyaltyLevel: "Silver",
-      loyaltyPoints: 750,
       createdAt: "2022-03-20",
       avatar: "MS",
       purchases: [
@@ -155,44 +149,22 @@ const CustomerProfile = () => {
     };
   }, [currentCustomer]);
 
-  // Filter customers based on search and filter criteria
+  // Filter customers based on search criteria
   useEffect(() => {
     const filtered = customers.filter(customer => {
       const matchesSearch = customer.fullName.toLowerCase().includes(customerSearch.toLowerCase()) || 
                            customer.email.toLowerCase().includes(customerSearch.toLowerCase());
       
-      let matchesFilter = true;
-      if (customerFilter !== 'all') {
-        matchesFilter = customer.loyaltyLevel.toLowerCase() === customerFilter;
-      }
-      
-      return matchesSearch && matchesFilter;
+      return matchesSearch;
     });
     
     setFilteredCustomers(filtered);
-  }, [customerSearch, customerFilter]);
+  }, [customerSearch]);
 
   // Helper functions
-  const getLoyaltyClass = (loyaltyLevel) => {
-    switch(loyaltyLevel.toLowerCase()) {
-      case 'gold': return 'loyalty-gold';
-      case 'silver': return 'loyalty-silver';
-      case 'bronze': return 'loyalty-bronze';
-      default: return 'loyalty-bronze';
-    }
-  };
-
   const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
     return new Date(dateString).toLocaleDateString('en-US', options);
-  };
-
-  const getInitials = (fullName) => {
-    return fullName
-      .split(' ')
-      .map(name => name[0])
-      .join('')
-      .toUpperCase();
   };
 
   // Filter functions
@@ -393,46 +365,6 @@ const CustomerProfile = () => {
     }
   };
 
-  // Edit form state
-  const [editForm, setEditForm] = useState({
-    fullName: '',
-    email: '',
-    loyaltyLevel: 'Gold'
-  });
-
-  // Open edit modal
-  const openEditModal = () => {
-    if (currentCustomer) {
-      setEditForm({
-        fullName: currentCustomer.fullName,
-        email: currentCustomer.email,
-        loyaltyLevel: currentCustomer.loyaltyLevel
-      });
-      setEditModalOpen(true);
-    }
-  };
-
-  // Save customer changes
-  const saveCustomerChanges = (e) => {
-    e.preventDefault();
-    
-    if (!currentCustomer) return;
-    
-    const updatedCustomer = {
-      ...currentCustomer,
-      fullName: editForm.fullName,
-      email: editForm.email,
-      loyaltyLevel: editForm.loyaltyLevel,
-      avatar: getInitials(editForm.fullName)
-    };
-    
-    setCurrentCustomer(updatedCustomer);
-    setEditModalOpen(false);
-    
-    // In a real app, you would update the customers array and potentially send to an API
-    alert('Customer information updated successfully!');
-  };
-
   return (
     <>
       {/* Split Content */}
@@ -450,16 +382,6 @@ const CustomerProfile = () => {
                 onChange={(e) => setCustomerSearch(e.target.value)}
               />
             </div>
-            <select 
-              className="filter-select" 
-              value={customerFilter}
-              onChange={(e) => setCustomerFilter(e.target.value)}
-            >
-              <option value="all">All Customers</option>
-              <option value="gold">Gold Members</option>
-              <option value="silver">Silver Members</option>
-              <option value="bronze">Bronze Members</option>
-            </select>
           </div>
           <div className="customer-list">
             {filteredCustomers.map((customer) => (
@@ -472,9 +394,6 @@ const CustomerProfile = () => {
                 <div className="customer-info-small">
                   <h4>{customer.fullName}</h4>
                   <p>{customer.email}</p>
-                  <span className={`customer-loyalty-small ${getLoyaltyClass(customer.loyaltyLevel)}`}>
-                    {customer.loyaltyLevel}
-                  </span>
                 </div>
               </div>
             ))}
@@ -508,13 +427,11 @@ const CustomerProfile = () => {
           {/* Overview Tab Content */}
           {activeTab === 'overview' && (
             <div className="tab-content active">
-              {/* Customer Information Card - Only showing the 4 required fields */}
+              {/* Customer Information Card - View only */}
               {currentCustomer && (
                 <div className="detail-card">
                   <h3><i className="fas fa-user"></i> Customer Information</h3>
-                  <div className="edit-icon" onClick={openEditModal}>
-                    <i className="fas fa-pen"></i>
-                  </div>
+                  {/* Edit icon removed */}
                   <ul className="detail-list">
                     <li className="detail-item">
                       <span className="detail-label">Full Name</span>
@@ -523,14 +440,6 @@ const CustomerProfile = () => {
                     <li className="detail-item">
                       <span className="detail-label">Email</span>
                       <span className="detail-value">{currentCustomer.email}</span>
-                    </li>
-                    <li className="detail-item">
-                      <span className="detail-label">Loyalty Level</span>
-                      <span className="detail-value">
-                        <span className={`loyalty-badge ${getLoyaltyClass(currentCustomer.loyaltyLevel)}`}>
-                          {currentCustomer.loyaltyLevel}
-                        </span>
-                      </span>
                     </li>
                     <li className="detail-item">
                       <span className="detail-label">Member Since</span>
@@ -793,64 +702,6 @@ const CustomerProfile = () => {
           )}
         </div>
       </div>
-
-      {/* Edit Customer Modal - Only essential fields */}
-      {editModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <div className="modal-header">
-              <h3>Edit Customer Information</h3>
-              <button 
-                className="close-btn" 
-                onClick={() => setEditModalOpen(false)}
-              >
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-            <form onSubmit={saveCustomerChanges}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label>Full Name</label>
-                  <input 
-                    type="text" 
-                    value={editForm.fullName}
-                    onChange={(e) => setEditForm({...editForm, fullName: e.target.value})}
-                    required 
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Email</label>
-                  <input 
-                    type="email" 
-                    value={editForm.email}
-                    onChange={(e) => setEditForm({...editForm, email: e.target.value})}
-                    required 
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Loyalty Level</label>
-                  <select 
-                    value={editForm.loyaltyLevel}
-                    onChange={(e) => setEditForm({...editForm, loyaltyLevel: e.target.value})}
-                  >
-                    <option value="Gold">Gold</option>
-                    <option value="Silver">Silver</option>
-                    <option value="Bronze">Bronze</option>
-                  </select>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn-secondary" onClick={() => setEditModalOpen(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </>
   );
 };
