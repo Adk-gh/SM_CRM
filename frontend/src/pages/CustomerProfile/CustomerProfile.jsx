@@ -1,13 +1,36 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Chart, registerables } from 'chart.js';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../../../firebase'; // Adjust path to your firebase config
 import './CustomerProfile.css';
 
 // Register Chart.js components
 Chart.register(...registerables);
 
+// Generate avatar from name
+const generateAvatar = (name) => {
+  if (!name) return 'CU';
+  return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
+};
+
+// Format Firestore timestamp for display
+const formatDate = (timestamp) => {
+  if (!timestamp) return 'N/A';
+  
+  try {
+    // Handle both Firestore Timestamp and string dates
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
+  } catch (e) {
+    return 'Invalid date';
+  }
+};
+
 const CustomerProfile = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [currentCustomer, setCurrentCustomer] = useState(null);
+  const [customers, setCustomers] = useState([]);
   const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -31,159 +54,139 @@ const CustomerProfile = () => {
   // Chart instances
   const [charts, setCharts] = useState({});
 
-  // Fallback mock data in case API fails
-  const mockCustomers = [
-    {
-      id: "cust_001",
-      fullName: "Juan Dela Cruz",
-      email: "juan@example.com",
-      createdAt: "2022-01-15",
-      avatar: "JD",
-      purchases: [
-        {
-          id: "pur_001",
-          date: "2023-05-15",
-          branch: "SM Megamall",
-          store: "TechWorld",
-          product: "MacBook Pro 14-inch",
-          amount: 89999,
-          category: "Electronics"
-        }
-      ],
-      feedback: [
-        {
-          id: "fb_001",
-          date: "2023-05-20",
-          branch: "SM Megamall",
-          store: "TechWorld", 
-          rating: 4,
-          review: "Great product quality but delivery was a bit late. Staff was very helpful though.",
-          sentiment: -0.3
-        }
-      ],
-      interactions: [
-        {
-          id: "int_001",
-          date: "2023-05-20",
-          type: "support",
-          details: "Inquired about product warranty",
-          status: "resolved",
-          assignedTo: "Maria Santos"
-        }
-      ],
-      supportTickets: [
-        {
-          id: "ST001",
-          subject: "Product Warranty Inquiry",
-          status: "Resolved",
-          date: "2023-05-20",
-          assignedTo: "Maria Santos"
-        }
-      ]
-    }
-  ];
-
-  // Fetch customer data from your local API endpoint
-  const fetchCustomerData = async (email) => {
+  // Fetch customers from Firebase Firestore (Reusable function)
+  const fetchCustomers = useCallback(async () => {
     try {
-      setLoading(true);
+      // NOTE: Loading state is managed by the caller (handleReloadCustomers or useEffect)
       setError(null);
       
-      console.log('Fetching customer data for:', email);
+      console.log('Fetching customers from Firestore...');
       
-      // Use your local API endpoint
-      const apiUrl = `/api/customer?email=${encodeURIComponent(email)}`;
-      console.log('API URL:', apiUrl);
+      const customersCollection = collection(db, 'customers');
+      const customersSnapshot = await getDocs(customersCollection);
       
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      if (customersSnapshot.empty) {
+        setError('No customers found in database');
+        setCustomers([]);
+        setFilteredCustomers([]);
+        setCurrentCustomer(null);
+        return;
+      }
+
+      const customersList = customersSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      console.log(`Found ${customersList.length} customers:`, customersList);
       
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
+      setCustomers(customersList);
+      setFilteredCustomers(customersList);
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API Error Response:', errorText);
-        throw new Error(`API returned ${response.status}: ${response.statusText}`);
+      // Attempt to keep the current customer selected, otherwise select the first one.
+      if (customersList.length > 0) {
+        const currentCustomerExists = currentCustomer && customersList.some(c => c.id === currentCustomer.id);
+        if (!currentCustomerExists) {
+          setCurrentCustomer(customersList[0]);
+        }
+      } else {
+          setCurrentCustomer(null);
       }
       
-      const customerData = await response.json();
-      console.log('Customer data received:', customerData);
-      
-      return customerData;
     } catch (err) {
-      console.error('Error fetching customer data:', err);
-      setError(`Failed to load customer data: ${err.message}`);
-      return null;
+      console.error('Error fetching customers:', err);
+      setError('Failed to load customers from database');
+      setCustomers([]);
+      setFilteredCustomers([]);
+      setCurrentCustomer(null);
+      throw err; // Re-throw the error so the caller can catch it and reset loading
+    }
+  }, [currentCustomer]);
+
+  // FIX: Function to invoke external API (to update DB) and then refresh local state (from Firebase)
+// ... (in CustomerProfile.jsx)
+
+  const handleReloadCustomers = async () => {
+    setLoading(true);
+    setError(null);
+    const apiUri = "https://sm-crm-rho.vercel.app/api/customer"; 
+    
+    try {
+      console.log(`Triggering external data sync via: ${apiUri}`);
+      
+      // Step 1: Execute the API call to trigger the backend update
+      // Add a 10-second timeout for robustness
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 seconds timeout
+
+      const res = await fetch(apiUri, { 
+        method: 'GET',
+        signal: controller.signal // Apply the abort signal
+      });
+      clearTimeout(timeoutId); // Clear the timeout if fetch completes
+
+      if (!res.ok) {
+        // Log API status if response received but status is bad (e.g., 404, 500)
+        console.warn(`External API trigger failed with status: ${res.status}. Proceeding with Firebase refresh.`);
+      } else {
+        console.log("External data sync trigger successful.");
+      }
+
+      // Step 2: Refresh the local customer list from Firebase
+      await fetchCustomers();
+
+    } catch (err) {
+      if (err.name === 'AbortError') {
+          console.error("API request timed out.");
+          setError("Data synchronization request timed out.");
+      } else {
+          // This block is where the "TypeError: Failed to fetch" is caught
+          console.error("Network/CORS Error during API trigger or customer reload:", err);
+          setError(`Failed to trigger data update or reload customers. Check network or CORS configuration: ${err.message}`);
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // Initialize component - use mock data initially
+// ...
+
+  // Initialize component - load customers from Firestore
   useEffect(() => {
-    setFilteredCustomers(mockCustomers);
-    if (mockCustomers.length > 0) {
-      setCurrentCustomer(mockCustomers[0]);
-    }
-  }, []);
-
-  const loadCustomerByEmail = async (email) => {
-    if (!email || email.trim() === '') {
-      setError('Please enter an email address');
-      return;
-    }
-
-    const customerData = await fetchCustomerData(email);
-    
-    if (customerData) {
-      const transformedCustomer = transformCustomerData(customerData);
-      setCurrentCustomer(transformedCustomer);
-      setFilteredCustomers([transformedCustomer]);
-      setError(null);
-    } else {
-      // Fallback to mock data
-      console.log('Using mock data for demonstration');
-      const mockCustomer = mockCustomers.find(cust => cust.email === email) || mockCustomers[0];
-      setCurrentCustomer(mockCustomer);
-      setFilteredCustomers([mockCustomer]);
-      setError('Using demo data - API connection failed');
-    }
-  };
-
-  // Transform API data to match your component structure
-  const transformCustomerData = (apiData) => {
-    // If API returns an array, take the first customer
-    if (Array.isArray(apiData)) {
-      if (apiData.length === 0) {
-        throw new Error('No customer data found');
+    // Initial load uses fetchCustomers directly
+    const initialLoad = async () => {
+      setLoading(true);
+      try {
+        await fetchCustomers();
+      } catch (e) {
+        // Error already set in fetchCustomers
+      } finally {
+        setLoading(false);
       }
-      apiData = apiData[0];
-    }
-
-    // Map the API response to your component's expected structure
-    return {
-      id: apiData.customerId || apiData.id || `cust_${Date.now()}`,
-      fullName: apiData.fullName || apiData.name || `${apiData.firstName || ''} ${apiData.lastName || ''}`.trim() || 'Unknown Customer',
-      email: apiData.email || apiData.customerEmail || 'No email provided',
-      createdAt: apiData.createdAt || apiData.registrationDate || apiData.joinDate || new Date().toISOString().split('T')[0],
-      avatar: generateAvatar(apiData.fullName || apiData.name || apiData.email),
-      purchases: apiData.purchases || apiData.transactions || apiData.orders || [],
-      feedback: apiData.feedback || apiData.reviews || apiData.comments || [],
-      interactions: apiData.interactions || apiData.customerInteractions || [],
-      supportTickets: apiData.supportTickets || apiData.tickets || []
     };
-  };
+    initialLoad();
+  }, [fetchCustomers]);
 
-  // Generate avatar from name
-  const generateAvatar = (name) => {
-    if (!name) return 'CU';
-    return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
-  };
+  // Filter customers based on search criteria
+  useEffect(() => {
+    if (customerSearch) {
+      const filtered = customers.filter(customer => 
+        customer.fullName?.toLowerCase().includes(customerSearch.toLowerCase()) || 
+        customer.email?.toLowerCase().includes(customerSearch.toLowerCase())
+      );
+      setFilteredCustomers(filtered);
+      if (filtered.length > 0) {
+        const currentCustomerExists = currentCustomer && filtered.some(c => c.id === currentCustomer.id);
+        if (!currentCustomerExists) {
+             setCurrentCustomer(filtered[0]);
+        }
+      } else if (filtered.length === 0) {
+          setCurrentCustomer(null);
+      }
+    } else {
+      setFilteredCustomers(customers);
+    }
+  }, [customerSearch, customers, currentCustomer]);
 
   // Initialize charts when customer changes
   useEffect(() => {
@@ -192,44 +195,26 @@ const CustomerProfile = () => {
     }
     
     return () => {
-      Object.values(charts).forEach(chart => chart && chart.destroy);
+      Object.values(charts).forEach(chart => chart && chart.destroy());
     };
-  }, [currentCustomer]);
+  }, [currentCustomer, charts]);
 
-  // Filter customers based on search criteria
-  useEffect(() => {
-    if (currentCustomer) {
-      const matchesSearch = currentCustomer.fullName.toLowerCase().includes(customerSearch.toLowerCase()) || 
-                           currentCustomer.email.toLowerCase().includes(customerSearch.toLowerCase());
-      
-      setFilteredCustomers(matchesSearch ? [currentCustomer] : []);
-    }
-  }, [customerSearch, currentCustomer]);
 
-  // Helper functions
-  const formatDate = (dateString) => {
-    try {
-      const options = { year: 'numeric', month: 'short', day: 'numeric' };
-      return new Date(dateString).toLocaleDateString('en-US', options);
-    } catch (e) {
-      return 'Invalid date';
-    }
-  };
-
-  // Filter functions
+  // Helper function to get filtered purchases
   const getFilteredPurchases = () => {
-    if (!currentCustomer) return [];
+    if (!currentCustomer || !currentCustomer.purchases) return [];
     
     return (currentCustomer.purchases || []).filter(purchase => {
-      const productName = purchase.product || purchase.name || '';
-      const matchesSearch = productName.toLowerCase().includes(purchaseSearch.toLowerCase());
-      const matchesBranch = purchaseBranchFilter === 'all' || purchase.branch === purchaseBranchFilter;
-      const matchesStore = purchaseStoreFilter === 'all' || purchase.store === purchaseStoreFilter;
-      
-      return matchesSearch && matchesBranch && matchesStore;
+        const itemNames = (purchase.items || []).map(item => item.name).join(' ');
+        const matchesSearch = itemNames.toLowerCase().includes(purchaseSearch.toLowerCase());
+        const matchesBranch = purchaseBranchFilter === 'all' || purchase.branch === purchaseBranchFilter;
+        const matchesStore = purchaseStoreFilter === 'all' || purchase.store === purchaseStoreFilter;
+        
+        return matchesSearch && matchesBranch && matchesStore;
     });
   };
-
+  
+  // Helper function to get filtered feedback
   const getFilteredFeedback = () => {
     if (!currentCustomer) return [];
     
@@ -243,6 +228,7 @@ const CustomerProfile = () => {
     });
   };
 
+  // Helper function to get filtered interactions
   const getFilteredInteractions = () => {
     if (!currentCustomer) return [];
     
@@ -257,6 +243,7 @@ const CustomerProfile = () => {
 
   // Chart initialization
   const initializeCharts = (customer) => {
+    // Clear existing charts
     Object.values(charts).forEach(chart => chart && chart.destroy());
     
     const isDark = document.body.getAttribute('data-theme') === 'dark';
@@ -355,13 +342,15 @@ const CustomerProfile = () => {
 
     // Spending Chart
     if (spendingChartRef.current) {
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-      const spendingData = months.map(() => Math.floor(Math.random() * 2000) + 500);
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const spendingData = months.map(() => 0); 
       
       if (customer.purchases) {
         customer.purchases.forEach(purchase => {
           try {
-            const monthIndex = new Date(purchase.date).getMonth();
+            const date = purchase.date?.toDate ? purchase.date.toDate() : new Date(purchase.date);
+            const monthIndex = date.getMonth(); 
+            
             if (monthIndex >= 0 && monthIndex < months.length) {
               spendingData[monthIndex] += purchase.amount || 0;
             }
@@ -423,12 +412,6 @@ const CustomerProfile = () => {
     }
   };
 
-  // Handle customer search by email
-  const handleCustomerSearch = async (searchEmail) => {
-    if (searchEmail) {
-      await loadCustomerByEmail(searchEmail);
-    }
-  };
 
   return (
     <>
@@ -437,53 +420,63 @@ const CustomerProfile = () => {
         <div className="customer-list-panel">
           <div className="panel-header">
             <h3>Customers</h3>
-            <div className="search-box">
-              <i className="fas fa-search"></i>
-              <input 
-                type="text" 
-                placeholder="Enter customer email..." 
-                value={customerSearch}
-                onChange={(e) => setCustomerSearch(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleCustomerSearch(e.target.value);
-                  }
-                }}
-              />
-            </div>
-            <button 
-              className="search-button"
-              onClick={() => handleCustomerSearch(customerSearch)}
+            <div className="search-controls">
+              <div className="search-box">
+                <i className="fas fa-search"></i>
+                <input 
+                  type="text" 
+                  placeholder="Search by name or email..." 
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                />
+              </div>
+              <button
+              className="reload-button"
+              onClick={handleReloadCustomers} 
               disabled={loading}
+              title="Reload customers from database (Triggers API sync)"
             >
-              {loading ? 'Loading...' : 'Search'}
+              <i className={`fas fa-sync-alt ${loading ? 'fa-spin' : ''}`}></i>
             </button>
+
+            </div>
           </div>
 
-          {loading && <div className="loading">Loading customer data...</div>}
+          {loading && <div className="loading">Loading customers from database...</div>}
           {error && (
-            <div className={`error ${error.includes('demo') ? 'warning' : ''}`}>
+            <div className="error">
               {error}
             </div>
           )}
 
           <div className="customer-list">
+            {!loading && filteredCustomers.length === 0 && (
+              <div className="no-customers">
+                {customerSearch ? 'No customers found matching your search' : 'No customers found in database'}
+              </div>
+            )}
+            
             {filteredCustomers.map((customer) => (
               <div 
                 key={customer.id}
                 className={`customer-item ${currentCustomer?.id === customer.id ? 'active' : ''}`}
                 onClick={() => setCurrentCustomer(customer)}
               >
-                <div className="customer-avatar-small">{customer.avatar}</div>
+                <div className="customer-avatar-small">
+                  {generateAvatar(customer.fullName)}
+                </div>
                 <div className="customer-info-small">
-                  <h4>{customer.fullName}</h4>
-                  <p>{customer.email}</p>
+                  <h4>{customer.fullName || 'Unknown Customer'}</h4>
+                  <p>{customer.email || 'No email provided'}</p>
+                  <small className="customer-meta">
+                    Member since {formatDate(customer.createdAt)}
+                    {customer.purchases && customer.purchases.length > 0 && (
+                      <span> • {customer.purchases.length} purchases</span>
+                    )}
+                  </small>
                 </div>
               </div>
             ))}
-            {!loading && !error && filteredCustomers.length === 0 && (
-              <div className="no-customers">Search for a customer by email</div>
-            )}
           </div>
         </div>
 
@@ -491,14 +484,18 @@ const CustomerProfile = () => {
         <div className="customer-details-panel">
           {loading ? (
             <div className="loading">Loading customer details...</div>
-          ) : error && !error.includes('demo') ? (
+          ) : error ? (
             <div className="error">Error loading customer details: {error}</div>
           ) : !currentCustomer ? (
             <div className="no-customer-selected">
-              Please search for a customer by email to view their profile
+              {filteredCustomers.length === 0 
+                ? 'No customers found in database' 
+                : 'Select a customer from the list to view their profile'
+              }
             </div>
           ) : (
             <>
+              
               <div className="tabs">
                 <div className={`tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
                   Overview
@@ -518,21 +515,29 @@ const CustomerProfile = () => {
                     <ul className="detail-list">
                       <li className="detail-item">
                         <span className="detail-label">Full Name</span>
-                        <span className="detail-value">{currentCustomer.fullName}</span>
+                        <span className="detail-value">{currentCustomer.fullName || 'Unknown Customer'}</span>
                       </li>
                       <li className="detail-item">
                         <span className="detail-label">Email</span>
-                        <span className="detail-value">{currentCustomer.email}</span>
+                        <span className="detail-value">{currentCustomer.email || 'No email provided'}</span>
                       </li>
                       <li className="detail-item">
                         <span className="detail-label">Member Since</span>
                         <span className="detail-value">{formatDate(currentCustomer.createdAt)}</span>
                       </li>
+                       <li className="detail-item">
+                        <span className="detail-label">Total Purchases</span>
+                        <span className="detail-value">{currentCustomer.purchases?.length || 0}</span>
+                      </li>
+                      <li className="detail-item">
+                        <span className="detail-label">Total Spent</span>
+                        <span className="detail-value">₱{currentCustomer.purchases?.reduce((sum, p) => sum + (p.amount || 0), 0).toFixed(2) || '0.00'}</span>
+                      </li>
                     </ul>
                   </div>
 
                   <div className="detail-card">
-                    <h3><i className="fas fa-shopping-cart"></i> Purchase History</h3>
+                    <h3><i className="fas fa-shopping-bag"></i> Purchase History</h3>
                     <div className="search-controls">
                       <div className="search-control">
                         <input 
@@ -548,9 +553,9 @@ const CustomerProfile = () => {
                           onChange={(e) => setPurchaseBranchFilter(e.target.value)}
                         >
                           <option value="all">All Branches</option>
-                          <option value="SM Megamall">SM Megamall</option>
-                          <option value="SM Cebu">SM Cebu</option>
-                          <option value="SM North EDSA">SM North EDSA</option>
+                           <option value="SM Megamall">SM Megamall</option>
+                           <option value="SM Cebu">SM Cebu</option>
+                           <option value="SM North EDSA">SM North EDSA</option>
                         </select>
                       </div>
                       <div className="search-control">
@@ -559,29 +564,38 @@ const CustomerProfile = () => {
                           onChange={(e) => setPurchaseStoreFilter(e.target.value)}
                         >
                           <option value="all">All Stores</option>
-                          <option value="TechWorld">TechWorld</option>
-                          <option value="Café Bliss">Café Bliss</option>
-                          <option value="Fashion Hub">Fashion Hub</option>
-                          <option value="Beauty Store">Beauty Store</option>
-                          <option value="Electronics Plus">Electronics Plus</option>
+                           <option value="TechWorld">TechWorld</option>
+                           <option value="Café Bliss">Café Bliss</option>
+                           <option value="Fashion Hub">Fashion Hub</option>
+                           <option value="Beauty Store">Beauty Store</option>
+                           <option value="Electronics Plus">Electronics Plus</option>
                         </select>
                       </div>
                     </div>
                     <ul className="purchase-list">
                       {getFilteredPurchases().length === 0 ? (
                         <li className="purchase-item" style={{ textAlign: 'center', color: 'var(--text-light)' }}>
-                          No purchases found
+                           {currentCustomer.purchases && currentCustomer.purchases.length > 0 
+                            ? 'No purchases match your filters' 
+                            : 'No purchases found for this customer'
+                          }
                         </li>
                       ) : (
-                        getFilteredPurchases().map(purchase => (
-                          <li key={purchase.id} className="purchase-item">
+                        getFilteredPurchases().map((purchase, index) => (
+                          <li key={purchase.id || index} className="purchase-item">
                             <div className="purchase-header">
-                              <span className="purchase-branch">{purchase.branch}</span>
+                              <span className="purchase-amount">₱{purchase.amount.toFixed(2)}</span>
                               <span className="purchase-date">{formatDate(purchase.date)}</span>
                             </div>
-                            <div className="purchase-store">{purchase.store}</div>
-                            <div className="purchase-product">{purchase.product}</div>
-                            <div className="purchase-amount">₱{(purchase.amount || 0).toLocaleString()}</div>
+                            <div className="purchase-meta">
+                              <span className="purchase-branch">{purchase.branch}</span> | 
+                              <span className="purchase-store"> {purchase.store}</span>
+                            </div>
+                            <ul className="purchase-items-list">
+                              {(purchase.items || []).map((item, itemIndex) => (
+                                <li key={itemIndex}>{item.name} (Qty: {item.quantity})</li>
+                              ))}
+                            </ul>
                           </li>
                         ))
                       )}
@@ -627,14 +641,17 @@ const CustomerProfile = () => {
                     <ul className="feedback-list">
                       {getFilteredFeedback().length === 0 ? (
                         <li className="feedback-item" style={{ textAlign: 'center', color: 'var(--text-light)' }}>
-                          No feedback found
+                          {currentCustomer.feedback && currentCustomer.feedback.length > 0 
+                            ? 'No feedback matches your filters' 
+                            : 'No feedback found for this customer'
+                          }
                         </li>
                       ) : (
-                        getFilteredFeedback().map(feedback => {
+                        getFilteredFeedback().map((feedback, index) => {
                           const rating = feedback.rating || 0;
                           const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
                           return (
-                            <li key={feedback.id} className="feedback-item">
+                            <li key={feedback.id || index} className="feedback-item">
                               <div className="feedback-header">
                                 <span className="feedback-branch">{feedback.branch}</span>
                                 <span className="feedback-date">{formatDate(feedback.date)}</span>
@@ -654,6 +671,7 @@ const CustomerProfile = () => {
                 </div>
               )}
 
+              {/* Interactions Tab */}
               {activeTab === 'interactions' && (
                 <div className="tab-content active">
                   <div className="customer-details-grid">
@@ -677,25 +695,30 @@ const CustomerProfile = () => {
                             <option value="support">Support Ticket</option>
                             <option value="feedback">Feedback</option>
                             <option value="purchase">Purchase</option>
+                            <option value="call">Call</option>
+                            <option value="email">Email</option>
                           </select>
                         </div>
                       </div>
                       <ul className="interaction-list">
                         {getFilteredInteractions().length === 0 ? (
                           <li className="interaction-item" style={{ textAlign: 'center', color: 'var(--text-light)' }}>
-                            No interactions found
+                            {currentCustomer.interactions && currentCustomer.interactions.length > 0 
+                              ? 'No interactions match your filters' 
+                              : 'No interactions found for this customer'
+                            }
                           </li>
                         ) : (
-                          getFilteredInteractions().map(interaction => (
-                            <li key={interaction.id} className="interaction-item">
+                          getFilteredInteractions().map((interaction, index) => (
+                            <li key={interaction.id || index} className="interaction-item">
                               <div className="interaction-header">
                                 <span className="interaction-type">{interaction.type}</span>
                                 <span className="interaction-date">{formatDate(interaction.date)}</span>
                               </div>
                               <div className="interaction-details">{interaction.details || interaction.description}</div>
                               <div className="interaction-status">
-                                <span className={`status-badge status-${interaction.status}`}>
-                                  {interaction.status}
+                                <span className={`status-badge status-${(interaction.status || '').toLowerCase()}`}>
+                                  {interaction.status || 'N/A'}
                                 </span>
                                 {interaction.assignedTo && (
                                   <span className="assigned-to">Assigned to: {interaction.assignedTo}</span>
@@ -715,8 +738,8 @@ const CustomerProfile = () => {
                             No support tickets
                           </li>
                         ) : (
-                          (currentCustomer.supportTickets || []).map(ticket => (
-                            <li key={ticket.id} className="ticket-item">
+                          (currentCustomer.supportTickets || []).map((ticket, index) => (
+                            <li key={ticket.id || index} className="ticket-item">
                               <div className="ticket-header">
                                 <span className="ticket-subject">{ticket.subject}</span>
                                 <span className={`ticket-status status-${(ticket.status || '').toLowerCase()}`}>
@@ -734,27 +757,40 @@ const CustomerProfile = () => {
                 </div>
               )}
 
+              {/* Analytics Tab */}
               {activeTab === 'analytics' && (
                 <div className="tab-content active">
                   <div className="analytics-grid">
                     <div className="analytics-card">
                       <h3>Purchase Analytics</h3>
                       <div className="chart-container">
-                        <canvas ref={purchaseChartRef}></canvas>
+                        {currentCustomer.purchases && currentCustomer.purchases.length > 0 ? (
+                           <canvas ref={purchaseChartRef}></canvas>
+                        ) : (
+                           <div className="no-data-chart">No purchase data available to chart.</div>
+                        )}
                       </div>
                     </div>
 
                     <div className="analytics-card">
                       <h3>Sentiment Analysis</h3>
                       <div className="chart-container">
-                        <canvas ref={sentimentChartRef}></canvas>
+                        {currentCustomer.feedback && currentCustomer.feedback.length > 0 ? (
+                            <canvas ref={sentimentChartRef}></canvas>
+                        ) : (
+                           <div className="no-data-chart">No feedback data available to chart sentiment.</div>
+                        )}
                       </div>
                     </div>
 
                     <div className="analytics-card">
                       <h3>Spending Trends</h3>
                       <div className="chart-container">
-                        <canvas ref={spendingChartRef}></canvas>
+                        {currentCustomer.purchases && currentCustomer.purchases.length > 0 ? (
+                            <canvas ref={spendingChartRef}></canvas>
+                        ) : (
+                            <div className="no-data-chart">No spending data available for trends.</div>
+                        )}
                       </div>
                     </div>
                   </div>
