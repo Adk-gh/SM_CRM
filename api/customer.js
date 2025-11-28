@@ -1,4 +1,4 @@
-// crm-system/backend/api/customer.js
+// sm-crm-app/api/customer.js
 const fetch = require('node-fetch');
 
 module.exports = async (req, res) => {
@@ -7,13 +7,20 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // Call the shopping system’s API
-    const response = await fetch(process.env.SHOPPING_API_URL, {
-      headers: {
-        'Authorization': `Bearer ${process.env.SHOPPING_API_KEY}`,
-        'Content-Type': 'application/json'
+    const targetEmail = req.query.email;
+    if (!targetEmail) {
+      return res.status(400).json({ message: "Missing required query parameter: email" });
+    }
+
+    const response = await fetch(
+      `${process.env.SHOPPING_API_URL}?email=${encodeURIComponent(targetEmail)}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.SHOPPING_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
       }
-    });
+    );
 
     if (!response.ok) {
       const errorDetails = await response.text();
@@ -21,8 +28,6 @@ module.exports = async (req, res) => {
     }
 
     const data = await response.json();
-
-    // Pass the customer data directly to CRM clients
     return res.status(200).json(data);
 
   } catch (err) {
