@@ -9,7 +9,7 @@ function createWindow() {
     width: 1200,
     height: 800,
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: path.join(__dirname, "preload.cjs"),
     },
   });
 
@@ -32,3 +32,8 @@ app.on("window-all-closed", () => {
     app.quit();
   }
 });
+
+const fs = require('fs');
+
+
+console.log(fs.existsSync(path.join(__dirname, 'preload.cjs')));

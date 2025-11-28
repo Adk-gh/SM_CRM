@@ -442,97 +442,97 @@ color: var(--dark-blue);
 
 
 /* -----------------------------------------------------------
-   5. PROFILE SETUP SPECIFIC STYLES (Modernized)
-   ----------------------------------------------------------- */
+ 5. PROFILE SETUP SPECIFIC STYLES (Modernized)
+ ----------------------------------------------------------- */
 
 /* Step Indicator (Modern Dot-Line Design) */
 .step-indicator {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 60%; /* Slightly narrower than full form */
-    margin: 0 auto 30px;
-    position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 60%; /* Slightly narrower than full form */
+  margin: 0 auto 30px;
+  position: relative;
 }
 
 .step-dot {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background-color: var(--light-gray);
-    border: 2px solid var(--muted);
-    transition: var(--transition-base);
-    z-index: 10;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: var(--light-gray);
+  border: 2px solid var(--muted);
+  transition: var(--transition-base);
+  z-index: 10;
 }
 
 .step-dot.active {
-    background-color: var(--dark-blue); /* Active dot color */
-    border-color: var(--dark-blue);
-    transform: scale(1.1);
-    box-shadow: 0 2px 8px rgba(57, 90, 127, 0.3);
+  background-color: var(--dark-blue); /* Active dot color */
+  border-color: var(--dark-blue);
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(57, 90, 127, 0.3);
 }
 
 .step-line {
-    flex-grow: 1;
-    height: 2px;
-    background-color: var(--muted);
-    margin: 0 -5px; 
-    transition: background-color 0.3s;
+  flex-grow: 1;
+  height: 2px;
+  background-color: var(--muted);
+  margin: 0 -5px; 
+  transition: background-color 0.3s;
 }
 
 .step-line.active {
-    background-color: var(--dark-blue); /* Active line color */
+  background-color: var(--dark-blue); /* Active line color */
 }
 
 /* Step Content Container */
 .profile-form-step {
-    width: 100%;
-    display: none; /* Hide non-active steps */
-    flex-direction: column;
-    justify-content: flex-start;
-    min-height: 280px;
-    /* Use the same animation as before */
-    animation: fadeIn 0.6s ease-out;
+  width: 100%;
+  display: none; /* Hide non-active steps */
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: 280px;
+  /* Use the same animation as before */
+  animation: fadeIn 0.6s ease-out;
 }
 
 .profile-form-step.active {
-    display: flex;
+  display: flex;
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(15px); }
-    to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Form Group Styles (For Profile Setup) */
 .form-group {
-    width: 100%;
-    margin-bottom: 20px;
-    text-align: left;
-    max-width: 480px; /* Aligns with navigation width */
+  width: 100%;
+  margin-bottom: 20px;
+  text-align: left;
+  max-width: 480px; /* Aligns with navigation width */
 }
 
 .form-group label {
-    display: block;
-    margin-bottom: 6px;
-    color: var(--dark-blue);
-    font-weight: 600;
-    font-size: 13px;
+  display: block;
+  margin-bottom: 6px;
+  color: var(--dark-blue);
+  font-weight: 600;
+  font-size: 13px;
 }
 
 .form-group input,
 .form-group select,
 .form-group .password-input-wrapper {
-    max-width: 100%; /* Ensure inputs/wrappers inside form-group are full width */
-    margin: 0; /* Remove default margin from input/select */
-    box-shadow: var(--shadow-input);
+  max-width: 100%; /* Ensure inputs/wrappers inside form-group are full width */
+  margin: 0; /* Remove default margin from input/select */
+  box-shadow: var(--shadow-input);
 }
 
 .form-group .input-hint {
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: 5px;
-    font-weight: 400;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 5px;
+  font-weight: 400;
 }
 
 
@@ -607,27 +607,27 @@ box-shadow: none;
 
 /* Secondary Buttons */
 .btn-back, .btn-cancel {
-    background-color: var(--light-gray);
-    color: var(--dark-blue);
-    border: 1px solid var(--pale-blue);
-    font-weight: 600;
+  background-color: var(--light-gray);
+  color: var(--dark-blue);
+  border: 1px solid var(--pale-blue);
+  font-weight: 600;
 }
 
 .btn-back:hover:not([disabled]), .btn-cancel:hover:not([disabled]) {
-    background-color: var(--pale-blue);
-    color: var(--dark-blue);
-    transform: translateY(-2px);
+  background-color: var(--pale-blue);
+  color: var(--dark-blue);
+  transform: translateY(-2px);
 }
 
 
 /* Primary Buttons (Next Step, Complete Setup) */
 .btn-primary {
-    /* Inherits general button styles (dark-blue background) */
-    background-color: var(--dark-blue);
-    color: white;
+  /* Inherits general button styles (dark-blue background) */
+  background-color: var(--dark-blue);
+  color: white;
 }
 .btn-primary:hover:not([disabled]) {
-    background-color: var(--mid-blue);
+  background-color: var(--mid-blue);
 }
 
 .btn-complete.btn-primary {
@@ -670,37 +670,37 @@ font-weight: 500;
 /* 6. Responsive Design Fixes */
 @media (max-width: 900px) {
 .container {
- width: 95%;
- min-height: 600px;
+width: 95%;
+min-height: 600px;
 }
 
 .container.profile-setup-active {
- width: 95%;
- min-height: 700px;
- max-height: 90vh;
+width: 95%;
+min-height: 700px;
+max-height: 90vh;
 }
 
 .form-container {
- width: 100%;
- position: relative;
- min-height: 550px;
+width: 100%;
+position: relative;
+min-height: 550px;
 }
 
 .profile-setup-container {
- position: relative;
- height: auto;
+position: relative;
+height: auto;
 }
 
 .profile-setup-container form {
- padding: 30px 40px;
+padding: 30px 40px;
 }
 
 .overlay-container {
- display: none;
+display: none;
 }
 
 input, select, .password-input-wrapper {
- max-width: 100%;
+max-width: 100%;
 }
 
 .ghost-text-button,
@@ -709,77 +709,77 @@ input, select, .password-input-wrapper {
 .success-message,
 .profile-review,
 .form-group,
- .step-indicator {
- max-width: 100%; 
+.step-indicator {
+max-width: 100%; 
 }
 
 .form-navigation {
- flex-direction: row;
- margin-top: 20px;
+flex-direction: row;
+margin-top: 20px;
 }
 }
 
 @media (max-width: 580px) {
 .login-container {
- padding: 10px;
- align-items: flex-start;
- min-height: 100vh;
+padding: 10px;
+align-items: flex-start;
+min-height: 100vh;
 }
 
 .container, .container.profile-setup-active {
- min-height: auto;
- margin: 10px auto;
- width: 100%;
- border-radius: var(--radius-small);
+min-height: auto;
+margin: 10px auto;
+width: 100%;
+border-radius: var(--radius-small);
 }
 
 form {
- padding: 25px 20px;
- min-height: 480px;
- gap: 10px;
+padding: 25px 20px;
+min-height: 480px;
+gap: 10px;
 }
 
 .profile-setup-container form {
- padding: 20px 15px;
- gap: 15px;
+padding: 20px 15px;
+gap: 15px;
 }
 
 .logo {
- width: 70px;
- height: 70px;
+width: 70px;
+height: 70px;
 }
 
 h1 {
- font-size: 24px;
+font-size: 24px;
 }
 
 h2 {
- font-size: 20px;
+font-size: 20px;
 }
 
 input, select, .password-input-wrapper {
- padding: 12px 14px;
- font-size: 14px;
- max-width: 100%;
+padding: 12px 14px;
+font-size: 14px;
+max-width: 100%;
 }
- 
- .password-input-wrapper input {
-  /* Adjusted padding for smaller screens */
-  padding-right: 40px;
- }
- 
- .password-toggle.icon-toggle {
-  right: 12px;
- }
+
+.password-input-wrapper input {
+ /* Adjusted padding for smaller screens */
+ padding-right: 40px;
+}
+
+.password-toggle.icon-toggle {
+ right: 12px;
+}
 
 button {
- padding: 12px 30px;
- font-size: 14px;
- max-width: 200px;
+padding: 12px 30px;
+font-size: 14px;
+max-width: 200px;
 }
 
 .form-navigation {
- flex-direction: column;
- gap: 10px;
+flex-direction: column;
+gap: 10px;
 }
 }
