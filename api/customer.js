@@ -15,7 +15,7 @@ module.exports = async (req, res) => {
       `${process.env.SHOPPING_API_URL}?email=${encodeURIComponent(targetEmail)}`,
       {
         headers: {
-          'Authorization': `Bearer ${process.env.SHOPPING_API_KEY}`,
+          'Authorization': `Bearer ${process.env.CRM_API_KEY}`,   // ✅ unified variable name
           'Content-Type': 'application/json'
         }
       }
@@ -34,6 +34,3 @@ module.exports = async (req, res) => {
     return res.status(500).json({ message: "Failed to fetch customers", error: err.message });
   }
 };
-
-console.log("Calling Shopping API:", process.env.SHOPPING_API_URL, targetEmail);
-
