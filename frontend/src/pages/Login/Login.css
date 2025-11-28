@@ -1,287 +1,287 @@
 :root {
- /* Existing Colors */
- --dark-blue: #395A7F;
- --mid-blue: #6E9FC1;
- --pale-blue: #A3CAE9;
- --light-gray: #E9ECEE;
- --muted: #ACACAC;
- --success: #2e7d32;
- --danger: #d32f2f;
+/* Existing Colors */
+--dark-blue: #395A7F;
+--mid-blue: #6E9FC1;
+--pale-blue: #A3CAE9;
+--light-gray: #E9ECEE;
+--muted: #ACACAC;
+--success: #2e7d32;
+--danger: #d32f2f;
 
- /* New Modern Variables */
- --shadow-lift: 0 10px 30px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.05);
- --shadow-input: 0 1px 3px rgba(0, 0, 0, 0.05);
- --radius-large: 16px;
- --radius-small: 8px;
- --transition-base: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+/* New Modern Variables */
+--shadow-lift: 0 10px 30px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.05);
+--shadow-input: 0 1px 3px rgba(0, 0, 0, 0.05);
+--radius-large: 16px;
+--radius-small: 8px;
+--transition-base: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 * {
- margin: 0;
- padding: 0;
- box-sizing: border-box;
- font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+margin: 0;
+padding: 0;
+box-sizing: border-box;
+font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 html, body {
- width: 100%;
- height: 100%;
- margin: 0;
- padding: 0;
- overflow: auto;
+width: 100%;
+height: 100%;
+margin: 0;
+padding: 0;
+overflow: auto;
 }
 
 /* 1. Main Login Container & Background */
 .login-container {
- display: flex;
- justify-content: center;
- align-items: center;
- min-height: 100vh;
- padding: 20px;
- background: linear-gradient(135deg, var(--light-gray) 0%, var(--pale-blue) 100%);
- transition: var(--transition-base);
- width: 100%;
+display: flex;
+justify-content: center;
+align-items: center;
+min-height: 100vh;
+padding: 20px;
+background: linear-gradient(135deg, var(--light-gray) 0%, var(--pale-blue) 100%);
+transition: var(--transition-base);
+width: 100%;
 }
 
 .login-container.right-panel-active {
- background: linear-gradient(135deg, var(--light-gray) 0%, var(--dark-blue) 100%);
+background: linear-gradient(135deg, var(--light-gray) 0%, var(--dark-blue) 100%);
 }
 
 .login-container.profile-setup-active {
- background: linear-gradient(135deg, var(--light-gray) 0%, var(--mid-blue) 100%);
+background: linear-gradient(135deg, var(--light-gray) 0%, var(--mid-blue) 100%);
 }
 
 /* 2. Primary Container (Card) */
 .container {
- background-color: #ffffff;
- border-radius: var(--radius-large);
- box-shadow: var(--shadow-lift);
- position: relative;
- overflow: hidden;
- width: 800px;
- max-width: 95%;
- min-height: 580px;
- height: auto;
- transition: var(--transition-base);
- margin: 0 auto;
+background-color: #ffffff;
+border-radius: var(--radius-large);
+box-shadow: var(--shadow-lift);
+position: relative;
+overflow: hidden;
+width: 800px;
+max-width: 95%;
+min-height: 580px;
+height: auto;
+transition: var(--transition-base);
+margin: 0 auto;
 }
 
 .container.profile-setup-active {
- width: 850px;
- min-height: 680px;
- max-height: 90vh;
+width: 850px;
+min-height: 680px;
+max-height: 90vh;
 }
 
 /* Form Containers */
 .form-container {
- position: absolute;
- top: 0;
- left: 0;
- width: 100%;
- height: 100%;
- transition: var(--transition-base);
- display: flex;
- align-items: center;
- justify-content: center;
- padding: 40px 0;
+position: absolute;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+transition: var(--transition-base);
+display: flex;
+align-items: center;
+justify-content: center;
+padding: 40px 0;
 }
 
 .sign-in-container {
- width: 50%;
- z-index: 2;
- left: 0;
+width: 50%;
+z-index: 2;
+left: 0;
 }
 
 .sign-up-container {
- width: 50%;
- opacity: 0;
- z-index: 1;
- left: 0;
+width: 50%;
+opacity: 0;
+z-index: 1;
+left: 0;
 }
 
 /* Right panel active transitions */
 .container.right-panel-active .sign-in-container {
- transform: translateX(100%);
+transform: translateX(100%);
 }
 
 .container.right-panel-active .sign-up-container {
- transform: translateX(100%);
- opacity: 1;
- z-index: 5;
+transform: translateX(100%);
+opacity: 1;
+z-index: 5;
 }
 
 /* Profile setup active transitions */
 .container.profile-setup-active .sign-in-container,
 .container.profile-setup-active .sign-up-container {
- transform: translateX(-100%);
- opacity: 0;
- pointer-events: none;
+transform: translateX(-100%);
+opacity: 0;
+pointer-events: none;
 }
 
 /* Profile setup container */
 .profile-setup-container {
- position: absolute;
- top: 0;
- left: 0;
- width: 100%;
- height: 100%;
- opacity: 0;
- z-index: 1;
- transform: translateX(0);
- pointer-events: none;
+position: absolute;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+opacity: 0;
+z-index: 1;
+transform: translateX(0);
+pointer-events: none;
 }
 
 .container.profile-setup-active .profile-setup-container {
- opacity: 1;
- z-index: 10;
- transform: translateX(0);
- pointer-events: all;
+opacity: 1;
+z-index: 10;
+transform: translateX(0);
+pointer-events: all;
 }
 
 /* Forms */
 form {
- background-color: #ffffff;
- display: flex;
- flex-direction: column;
- align-items: center;
- justify-content: center;
- padding: 0 40px;
- height: 100%;
- width: 100%;
- text-align: center;
- overflow-y: auto;
- gap: 12px;
+background-color: #ffffff;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+padding: 0 40px;
+height: 100%;
+width: 100%;
+text-align: center;
+overflow-y: auto;
+gap: 12px;
 }
 
 /* Profile setup form */
 .profile-setup-container form {
- padding: 40px 60px;
- justify-content: flex-start;
- max-width: 100%;
- margin: 0 auto;
- gap: 20px;
+padding: 40px 60px;
+justify-content: flex-start;
+max-width: 100%;
+margin: 0 auto;
+gap: 20px; /* Increased gap for cleaner look */
 }
 
 .logo {
- width: 90px;
- height: 90px;
- border-radius: 50%;
- object-fit: cover;
- margin-bottom: 10px;
- box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+width: 90px;
+height: 90px;
+border-radius: 50%;
+object-fit: cover;
+margin-bottom: 10px;
+box-shadow: 0 5px 15px rgba(0,0,0,0.1);
 }
 
 h1 {
- font-weight: 700;
- color: var(--dark-blue);
- margin-bottom: 5px;
- font-size: 28px;
+font-weight: 700;
+color: var(--dark-blue);
+margin-bottom: 5px;
+font-size: 28px;
 }
 
 h2 {
- font-weight: 600;
- color: var(--dark-blue);
- margin-bottom: 18px;
- font-size: 22px;
+font-weight: 600;
+color: var(--dark-blue);
+margin-bottom: 18px;
+font-size: 22px;
 }
 
 p {
- color: var(--dark-blue);
- font-size: 14px;
- margin-bottom: 8px;
- line-height: 1.5;
+color: var(--dark-blue);
+font-size: 14px;
+margin-bottom: 8px;
+line-height: 1.5;
 }
 
 /* 3. Modern Input Styles */
 input, select {
- background-color: #ffffff;
- border: 1px solid #e1e5e9;
- padding: 15px 18px;
- margin: 5px 0;
- width: 100%;
- max-width: 320px;
- border-radius: var(--radius-small);
- font-size: 15px;
- transition: var(--transition-base);
- font-weight: 400;
- color: var(--dark-blue); 
- box-shadow: var(--shadow-input);
+background-color: #ffffff;
+border: 1px solid #e1e5e9;
+padding: 15px 18px;
+margin: 5px 0;
+width: 100%;
+max-width: 320px;
+border-radius: var(--radius-small);
+font-size: 15px;
+transition: var(--transition-base);
+font-weight: 400;
+color: var(--dark-blue); 
+box-shadow: var(--shadow-input);
 }
 
 /* Placeholder Styling */
 input::placeholder {
- color: var(--muted); 
- opacity: 1;
- font-weight: 400;
+color: var(--muted); 
+opacity: 1;
+font-weight: 400;
 }
 
 /* Input focus states */
 input:focus, select:focus {
- outline: none;
- border-color: var(--mid-blue);
- background-color: #ffffff;
- box-shadow: 0 0 0 4px rgba(110, 159, 193, 0.2);
- transform: translateY(-2px);
+outline: none;
+border-color: var(--mid-blue);
+background-color: #ffffff;
+box-shadow: 0 0 0 4px rgba(110, 159, 193, 0.2);
+transform: translateY(-2px);
 }
 
 /* Select dropdown styling */
 select {
- appearance: none;
- background-image: url("data:image/svg+xml;charset=US-ASCII,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'><path fill='%23395A7F' d='M2 0L0 2h4zm0 5L0 3h4z'/></svg>");
- background-repeat: no-repeat;
- background-position: right 18px center;
- background-size: 12px;
- padding-right: 40px;
- cursor: pointer;
+appearance: none;
+background-image: url("data:image/svg+xml;charset=US-ASCII,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'><path fill='%23395A7F' d='M2 0L0 2h4zm0 5L0 3h4z'/></svg>");
+background-repeat: no-repeat;
+background-position: right 18px center;
+background-size: 12px;
+padding-right: 40px;
+cursor: pointer;
 }
 
 /* Hover states */
 input:hover, select:hover {
- border-color: var(--mid-blue);
- background-color: #f7f9fa;
+border-color: var(--mid-blue);
+background-color: #f7f9fa;
 }
 
 /* Error state for inputs */
 input:invalid:not(:focus):not(:placeholder-shown) {
- border-color: var(--danger);
- background-color: #fff5f5;
+border-color: var(--danger);
+background-color: #fff5f5;
 }
 
 /* --- Password Toggle Styling (Updated for Icon Inside Input) --- */
 
 /* Wrapper for password input and toggle icon */
 .password-input-wrapper {
- position: relative;
- width: 100%;
- margin: 5px 0; /* Adjusted to match regular input margin */
- max-width: 320px; /* Crucial to match input max-width */
+position: relative;
+width: 100%;
+margin: 5px 0; /* Adjusted to match regular input margin */
+max-width: 320px; /* Crucial to match input max-width */
 }
 
 /* Password input within the wrapper needs special padding */
 .password-input-wrapper input {
- /* Override default input width/margin to fit wrapper */
- margin: 0;
- max-width: 100%;
- /* Increased padding on the right to make space for the icon */
- padding-right: 45px; 
+/* Override default input width/margin to fit wrapper */
+margin: 0;
+max-width: 100%;
+/* Increased padding on the right to make space for the icon */
+padding-right: 45px; 
 }
 
 /* Style for the Icon Toggle */
 .password-toggle.icon-toggle {
- position: absolute;
- top: 50%;
- right: 15px; /* Position inside the input boundary */
- transform: translateY(-50%);
- cursor: pointer;
- font-size: 1.2em; 
- line-height: 1; 
- color: var(--muted); /* Use muted color for the icon */
- --user-select: none;
- transition: color 0.2s ease;
+position: absolute;
+top: 50%;
+right: 15px; /* Position inside the input boundary */
+transform: translateY(-50%);
+cursor: pointer;
+font-size: 1.2em; 
+line-height: 1; 
+color: var(--muted); /* Use muted color for the icon */
+--user-select: none;
+transition: color 0.2s ease;
 }
 
 .password-toggle.icon-toggle:hover {
- color: var(--dark-blue);
+color: var(--dark-blue);
 }
 
 /* --- End Password Toggle Styling --- */
@@ -289,465 +289,497 @@ input:invalid:not(:focus):not(:placeholder-shown) {
 
 /* 4. Modern Button Styles */
 button {
- border-radius: 50px;
- border: none;
- background-color: var(--dark-blue);
- color: #fff;
- font-size: 15px;
- font-weight: 700;
- padding: 15px 50px;
- letter-spacing: 0.5px;
- transition: var(--transition-base);
- cursor: pointer;
- margin-top: 15px;
- width: 100%;
- max-width: 240px;
- box-shadow: 0 4px 15px rgba(57, 90, 127, 0.3);
+border-radius: 50px;
+border: none;
+background-color: var(--dark-blue);
+color: #fff;
+font-size: 15px;
+font-weight: 700;
+padding: 15px 50px;
+letter-spacing: 0.5px;
+transition: var(--transition-base);
+cursor: pointer;
+margin-top: 15px;
+width: 100%;
+max-width: 240px;
+box-shadow: 0 4px 15px rgba(57, 90, 127, 0.3);
 }
 
 button:hover:not(:disabled) {
- background-color: var(--mid-blue);
- transform: translateY(-3px);
- box-shadow: 0 8px 20px rgba(57, 90, 127, 0.4);
+background-color: var(--mid-blue);
+transform: translateY(-3px);
+box-shadow: 0 8px 20px rgba(57, 90, 127, 0.4);
 }
 
 button:disabled {
- opacity: 0.5;
- cursor: not-allowed;
- transform: none;
- box-shadow: none;
+opacity: 0.5;
+cursor: not-allowed;
+transform: none;
+box-shadow: none;
 }
 
 /* Forgot Password Link Style (Text appearance) */
 .ghost-text-button {
- background: none; 
- border: none;
- color: var(--danger); 
- font-size: 13px;
- font-weight: 600; 
- cursor: pointer;
- text-decoration: none; 
- display: block;
- width: 100%;
- max-width: 320px;
- text-align: right;
- transition: var(--transition-base);
+background: none; 
+border: none;
+color: var(--danger); 
+font-size: 13px;
+font-weight: 600; 
+cursor: pointer;
+text-decoration: none; 
+display: block;
+width: 100%;
+max-width: 320px;
+text-align: right;
+transition: var(--transition-base);
 
- /* Remove button-specific margins and padding */
- box-shadow: none;
- padding: 0;
- margin-top: 5px; 
- margin-bottom: 10px;
+/* Remove button-specific margins and padding */
+box-shadow: none;
+padding: 0;
+margin-top: 5px; 
+margin-bottom: 10px;
 }
 
 .ghost-text-button:hover {
- color: #ff5252; 
- text-decoration: underline; 
- transform: none; 
+color: #ff5252; 
+text-decoration: underline; 
+transform: none; 
 }
 
 /* Overlay Styles - Optimized transitions */
 .overlay-container {
- position: absolute;
- top: 0;
- left: 50%;
- width: 50%;
- height: 100%;
- overflow: hidden;
- transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
- z-index: 100;
+position: absolute;
+top: 0;
+left: 50%;
+width: 50%;
+height: 100%;
+overflow: hidden;
+transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+z-index: 100;
 }
 
 .container.right-panel-active .overlay-container {
- transform: translateX(-100%);
+transform: translateX(-100%);
 }
 
 .container.profile-setup-active .overlay-container {
- opacity: 0;
- pointer-events: none;
+opacity: 0;
+pointer-events: none;
 }
 
 .overlay {
- background: linear-gradient(135deg, var(--dark-blue), var(--mid-blue));
- color: #fff;
- position: relative;
- left: -100%;
- height: 100%;
- width: 200%;
- transform: translateX(0);
- transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+background: linear-gradient(135deg, var(--dark-blue), var(--mid-blue));
+color: #fff;
+position: relative;
+left: -100%;
+height: 100%;
+width: 200%;
+transform: translateX(0);
+transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .container.right-panel-active .overlay {
- transform: translateX(50%);
+transform: translateX(50%);
 }
 
 .overlay-panel {
- position: absolute;
- display: flex;
- flex-direction: column;
- align-items: center;
- justify-content: center;
- padding: 0 40px;
- text-align: center;
- top: 0;
- height: 100%;
- width: 50%;
- transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
- gap: 20px;
+position: absolute;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+padding: 0 40px;
+text-align: center;
+top: 0;
+height: 100%;
+width: 50%;
+transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+gap: 20px;
 }
 
 .overlay-panel h1 {
- color: #fff;
- font-size: 26px;
- font-weight: 700;
+color: #fff;
+font-size: 26px;
+font-weight: 700;
 }
 
 .overlay-panel p {
- color: #fff;
- font-size: 14px;
+color: #fff;
+font-size: 14px;
 }
 
 .overlay-left {
- transform: translateX(-20%);
+transform: translateX(-20%);
 }
 
 .container.right-panel-active .overlay-left {
- transform: translateX(0);
+transform: translateX(0);
 }
 
 .overlay-right {
- right: 0;
- transform: translateX(0);
+right: 0;
+transform: translateX(0);
 }
 
 .container.right-panel-active .overlay-right {
- transform: translateX(20%);
+transform: translateX(20%);
 }
 
 .ghost {
- background-color: transparent;
- border: 2px solid #fff;
- color: #fff;
- padding: 12px 35px;
- max-width: 180px;
- border-radius: 50px;
- box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+background-color: transparent;
+border: 2px solid #fff;
+color: #fff;
+padding: 12px 35px;
+max-width: 180px;
+border-radius: 50px;
+box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
 .ghost:hover {
- background-color: #fff;
- color: var(--dark-blue);
+background-color: #fff;
+color: var(--dark-blue);
 }
 
 
-/* 5. Profile Setup Specific Styles */
+/* -----------------------------------------------------------
+   5. PROFILE SETUP SPECIFIC STYLES (Modernized)
+   ----------------------------------------------------------- */
 
-.profile-setup-steps {
- display: flex;
- justify-content: center;
- margin-bottom: 25px;
- gap: 20px;
+/* Step Indicator (Modern Dot-Line Design) */
+.step-indicator {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 60%; /* Slightly narrower than full form */
+    margin: 0 auto 30px;
+    position: relative;
 }
 
-.step {
- width: 36px;
- height: 36px;
- border-radius: 50%;
- background-color: var(--light-gray);
- border: 2px solid var(--muted);
- color: var(--muted);
- display: flex;
- align-items: center;
- justify-content: center;
- font-size: 14px;
- font-weight: 600;
- transition: var(--transition-base);
+.step-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background-color: var(--light-gray);
+    border: 2px solid var(--muted);
+    transition: var(--transition-base);
+    z-index: 10;
 }
 
-.step.active {
- background-color: var(--dark-blue);
- color: white;
- border-color: var(--dark-blue);
- transform: scale(1.1);
- box-shadow: 0 2px 10px rgba(57, 90, 127, 0.4);
+.step-dot.active {
+    background-color: var(--dark-blue); /* Active dot color */
+    border-color: var(--dark-blue);
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(57, 90, 127, 0.3);
 }
 
-.profile-step {
- width: 100%;
- display: none;
- margin-bottom: 8px;
- flex-direction: column;
- justify-content: flex-start;
- min-height: 280px;
+.step-line {
+    flex-grow: 1;
+    height: 2px;
+    background-color: var(--muted);
+    margin: 0 -5px; 
+    transition: background-color 0.3s;
 }
 
-.profile-step.active {
- display: flex;
- animation: fadeIn 0.6s ease-out;
+.step-line.active {
+    background-color: var(--dark-blue); /* Active line color */
+}
+
+/* Step Content Container */
+.profile-form-step {
+    width: 100%;
+    display: none; /* Hide non-active steps */
+    flex-direction: column;
+    justify-content: flex-start;
+    min-height: 280px;
+    /* Use the same animation as before */
+    animation: fadeIn 0.6s ease-out;
+}
+
+.profile-form-step.active {
+    display: flex;
 }
 
 @keyframes fadeIn {
- from { opacity: 0; transform: translateY(15px); }
- to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-/* Form Navigation */
-.form-navigation {
- display: flex;
- justify-content: space-between;
- width: 100%;
- margin-top: auto;
- margin-bottom: 8px;
- gap: 15px;
- max-width: 480px;
-}
-
-.form-navigation button {
- margin: 0;
- flex: 1;
- padding: 14px 25px;
- max-width: none;
- font-size: 14px;
- box-shadow: none;
-}
-
-.btn-back {
- background-color: var(--muted);
-}
-
-.btn-back:hover {
- background-color: #9a9a9a;
-}
-
-.btn-next {
- background-color: var(--dark-blue);
-}
-
-.btn-next:hover {
- background-color: var(--mid-blue);
-}
-
-.btn-complete {
- background-color: var(--success);
-}
-
-.btn-complete:hover {
- background-color: #4caf50;
-}
-
-/* Form Group Styles (Ensure inputs inside this match the overall max-width) */
+/* Form Group Styles (For Profile Setup) */
 .form-group {
- width: 100%;
- margin-bottom: 20px;
- text-align: left;
- max-width: 480px;
+    width: 100%;
+    margin-bottom: 20px;
+    text-align: left;
+    max-width: 480px; /* Aligns with navigation width */
 }
 
 .form-group label {
- display: block;
- margin-bottom: 6px;
- color: var(--dark-blue);
- font-weight: 600;
- font-size: 13px;
+    display: block;
+    margin-bottom: 6px;
+    color: var(--dark-blue);
+    font-weight: 600;
+    font-size: 13px;
 }
 
 .form-group input,
 .form-group select,
 .form-group .password-input-wrapper {
- max-width: 100%; /* Ensure inputs/wrappers inside form-group are full width */
+    max-width: 100%; /* Ensure inputs/wrappers inside form-group are full width */
+    margin: 0; /* Remove default margin from input/select */
+    box-shadow: var(--shadow-input);
 }
 
-/* Profile Review */
-.profile-review {
- background-color: #f7f9fa;
- padding: 25px;
- border-radius: var(--radius-small);
- margin: 20px 0;
- border: 1px solid var(--pale-blue);
- max-width: 480px;
- width: 100%;
- box-shadow: var(--shadow-input);
+.form-group .input-hint {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 5px;
+    font-weight: 400;
+}
+
+
+/* Profile Review (Step 3) */
+.review-summary {
+background-color: #f7f9fa;
+padding: 25px;
+border-radius: var(--radius-small);
+margin: 20px 0;
+border: 1px solid var(--pale-blue);
+max-width: 480px;
+width: 100%;
+box-shadow: var(--shadow-input);
+}
+
+.review-summary .review-title {
+margin-top: 0;
+margin-bottom: 15px;
+color: var(--dark-blue);
+font-weight: 700;
 }
 
 .review-item {
- margin-bottom: 12px;
- padding-bottom: 12px;
- border-bottom: 1px dashed rgba(57, 90, 127, 0.2);
- display: flex;
- justify-content: space-between;
- align-items: center;
- font-size: 14px;
+margin-bottom: 12px;
+padding-bottom: 12px;
+border-bottom: 1px dashed rgba(57, 90, 127, 0.2);
+display: flex;
+justify-content: space-between;
+align-items: center;
+font-size: 14px;
 }
 
 .review-item:last-child {
- border-bottom: none;
- margin-bottom: 0;
+border-bottom: none;
+margin-bottom: 0;
 }
 
 .review-item strong {
- color: var(--dark-blue);
- min-width: 100px;
- text-align: left;
- font-weight: 700;
+color: var(--dark-blue);
+min-width: 100px;
+text-align: left;
+font-weight: 700;
 }
 
 .review-item span {
- color: var(--dark-blue);
- text-align: right;
- flex: 1;
- font-weight: 500;
+color: var(--dark-blue);
+text-align: right;
+flex: 1;
+font-weight: 500;
 }
 
-.review-note {
- font-size: 13px;
- color: var(--muted);
- text-align: center;
- margin-top: 15px;
- font-style: italic;
+
+/* Form Navigation (Profile Setup Buttons) */
+.form-navigation {
+display: flex;
+justify-content: space-between;
+width: 100%;
+margin-top: auto;
+margin-bottom: 8px;
+gap: 15px;
+max-width: 480px; /* Aligns buttons with form groups */
+}
+
+.form-navigation button {
+margin: 0;
+flex: 1;
+padding: 14px 25px;
+max-width: none;
+font-size: 14px;
+box-shadow: none;
+}
+
+/* Secondary Buttons */
+.btn-back, .btn-cancel {
+    background-color: var(--light-gray);
+    color: var(--dark-blue);
+    border: 1px solid var(--pale-blue);
+    font-weight: 600;
+}
+
+.btn-back:hover:not([disabled]), .btn-cancel:hover:not([disabled]) {
+    background-color: var(--pale-blue);
+    color: var(--dark-blue);
+    transform: translateY(-2px);
+}
+
+
+/* Primary Buttons (Next Step, Complete Setup) */
+.btn-primary {
+    /* Inherits general button styles (dark-blue background) */
+    background-color: var(--dark-blue);
+    color: white;
+}
+.btn-primary:hover:not([disabled]) {
+    background-color: var(--mid-blue);
+}
+
+.btn-complete.btn-primary {
+background-color: var(--success);
+}
+
+.btn-complete.btn-primary:hover:not([disabled]) {
+background-color: #4caf50;
 }
 
 /* Error and Success Messages */
 .error-message {
- background-color: rgba(211, 47, 47, 0.1);
- color: var(--danger);
- padding: 12px 15px;
- border-radius: var(--radius-small);
- margin-bottom: 15px;
- width: 100%;
- max-width: 480px;
- text-align: center;
- border: 1px solid rgba(211, 47, 47, 0.3);
- font-size: 14px;
- font-weight: 500;
+background-color: rgba(211, 47, 47, 0.1);
+color: var(--danger);
+padding: 12px 15px;
+border-radius: var(--radius-small);
+margin-bottom: 15px;
+width: 100%;
+max-width: 480px;
+text-align: center;
+border: 1px solid rgba(211, 47, 47, 0.3);
+font-size: 14px;
+font-weight: 500;
 }
 
 .success-message {
- background-color: rgba(46, 125, 50, 0.1);
- color: var(--success);
- padding: 12px 15px;
- border-radius: var(--radius-small);
- margin-bottom: 15px;
- width: 100%;
- max-width: 480px;
- text-align: center;
- border: 1px solid rgba(46, 125, 50, 0.3);
- font-size: 14px;
- font-weight: 500;
+background-color: rgba(46, 125, 50, 0.1);
+color: var(--success);
+padding: 12px 15px;
+border-radius: var(--radius-small);
+margin-bottom: 15px;
+width: 100%;
+max-width: 480px;
+text-align: center;
+border: 1px solid rgba(46, 125, 50, 0.3);
+font-size: 14px;
+font-weight: 500;
 }
 
 /* 6. Responsive Design Fixes */
 @media (max-width: 900px) {
- .container {
-  width: 95%;
-  min-height: 600px;
- }
+.container {
+ width: 95%;
+ min-height: 600px;
+}
 
- .container.profile-setup-active {
-  width: 95%;
-  min-height: 700px;
-  max-height: 90vh;
- }
+.container.profile-setup-active {
+ width: 95%;
+ min-height: 700px;
+ max-height: 90vh;
+}
 
- .form-container {
-  width: 100%;
-  position: relative;
-  min-height: 550px;
- }
+.form-container {
+ width: 100%;
+ position: relative;
+ min-height: 550px;
+}
 
- .profile-setup-container {
-  position: relative;
-  height: auto;
- }
+.profile-setup-container {
+ position: relative;
+ height: auto;
+}
 
- .profile-setup-container form {
-  padding: 30px 40px;
- }
+.profile-setup-container form {
+ padding: 30px 40px;
+}
 
- .overlay-container {
-  display: none;
- }
+.overlay-container {
+ display: none;
+}
 
- input, select, .password-input-wrapper {
-  max-width: 100%;
- }
+input, select, .password-input-wrapper {
+ max-width: 100%;
+}
 
- .ghost-text-button,
- .form-navigation,
- .error-message,
- .success-message,
- .profile-review,
- .form-group {
-  max-width: 100%; 
- }
+.ghost-text-button,
+.form-navigation,
+.error-message,
+.success-message,
+.profile-review,
+.form-group,
+ .step-indicator {
+ max-width: 100%; 
+}
 
- .form-navigation {
-  flex-direction: row;
-  margin-top: 20px;
- }
+.form-navigation {
+ flex-direction: row;
+ margin-top: 20px;
+}
 }
 
 @media (max-width: 580px) {
- .login-container {
-  padding: 10px;
-  align-items: flex-start;
-  min-height: 100vh;
+.login-container {
+ padding: 10px;
+ align-items: flex-start;
+ min-height: 100vh;
+}
+
+.container, .container.profile-setup-active {
+ min-height: auto;
+ margin: 10px auto;
+ width: 100%;
+ border-radius: var(--radius-small);
+}
+
+form {
+ padding: 25px 20px;
+ min-height: 480px;
+ gap: 10px;
+}
+
+.profile-setup-container form {
+ padding: 20px 15px;
+ gap: 15px;
+}
+
+.logo {
+ width: 70px;
+ height: 70px;
+}
+
+h1 {
+ font-size: 24px;
+}
+
+h2 {
+ font-size: 20px;
+}
+
+input, select, .password-input-wrapper {
+ padding: 12px 14px;
+ font-size: 14px;
+ max-width: 100%;
+}
+ 
+ .password-input-wrapper input {
+  /* Adjusted padding for smaller screens */
+  padding-right: 40px;
+ }
+ 
+ .password-toggle.icon-toggle {
+  right: 12px;
  }
 
- .container, .container.profile-setup-active {
-  min-height: auto;
-  margin: 10px auto;
-  width: 100%;
-  border-radius: var(--radius-small);
- }
+button {
+ padding: 12px 30px;
+ font-size: 14px;
+ max-width: 200px;
+}
 
- form {
-  padding: 25px 20px;
-  min-height: 480px;
-  gap: 10px;
- }
-
- .profile-setup-container form {
-  padding: 20px 15px;
-  gap: 15px;
- }
-
- .logo {
-  width: 70px;
-  height: 70px;
- }
-
- h1 {
-  font-size: 24px;
- }
-
- h2 {
-  font-size: 20px;
- }
-
- input, select, .password-input-wrapper {
-  padding: 12px 14px;
-  font-size: 14px;
-  max-width: 100%;
- }
-  
-  .password-input-wrapper input {
-    /* Adjusted padding for smaller screens */
-    padding-right: 40px;
-  }
-  
-  .password-toggle.icon-toggle {
-    right: 12px;
-  }
-
- button {
-  padding: 12px 30px;
-  font-size: 14px;
-  max-width: 200px;
- }
-
- .form-navigation {
-  flex-direction: column;
-  gap: 10px;
- }
+.form-navigation {
+ flex-direction: column;
+ gap: 10px;
+}
 }

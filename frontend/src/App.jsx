@@ -18,130 +18,148 @@ import { useState, useEffect } from 'react';
 import './App.css';
 
 function App() {
-  const [user, setUser] = useState(null);
-  const [userProfile, setUserProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+ const [user, setUser] = useState(null);
+ const [userProfile, setUserProfile] = useState(null);
+ const [loading, setLoading] = useState(true);
+ // 🔑 NEW STATE: Tracks if the user is authenticated but MUST stay on the login screen for 2FA.
+ const [is2FANeeded, setIs2FANeeded] = useState(false); 
 
-  useEffect(() => {
-    let unsubscribeProfile = null;
+ useEffect(() => {
+  let unsubscribeProfile = null;
 
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      console.log('Auth state changed - User:', user);
+  const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+   console.log('Auth state changed - User:', user);
+   
+   // Reset 2FA needed state before processing
+   setIs2FANeeded(false); 
 
-      if (user) {
-        try {
-          console.log('Fetching user profile for UID:', user.uid);
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
+   if (user) {
+    try {
+     console.log('Fetching user profile for UID:', user.uid);
+     const userDocRef = doc(db, 'users', user.uid);
+     const userDoc = await getDoc(userDocRef);
 
-          if (userDoc.exists()) {
-            const profileData = userDoc.data();
-            setUserProfile(profileData);
-          } else {
-            console.log('No user profile found');
-            setUserProfile({ profileCompleted: false });
-          }
-
-          // Real-time listener for profile
-          unsubscribeProfile = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
-            if (docSnap.exists()) {
-              setUserProfile(docSnap.data());
-            }
-          });
-
-        } catch (error) {
-          console.error('Error fetching user profile:', error);
-          setUserProfile({ profileCompleted: false });
-        }
-      } else {
-        console.log('No user signed in');
-        setUserProfile(null);
-        if (unsubscribeProfile) unsubscribeProfile();
+     if (userDoc.exists()) {
+      const profileData = userDoc.data();
+      setUserProfile(profileData);
+      
+      // ⭐ CRITICAL CHECK: Check if the user is signed in but pending 2FA completion
+      if (profileData.is2FAPending === true) {
+       console.log('User found but 2FA is pending. Blocking dashboard access.');
+       setIs2FANeeded(true);
       }
 
-      setUser(user);
-      setLoading(false);
-    });
+     } else {
+      console.log('No user profile found');
+      setUserProfile({ profileCompleted: false });
+     }
 
-    return () => {
-      unsubscribeAuth();
-      if (unsubscribeProfile) unsubscribeProfile();
-    };
-  }, []);
+     // Real-time listener for profile changes (including profileCompleted/is2FAPending)
+     unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+       const updatedProfile = docSnap.data();
+       setUserProfile(updatedProfile);
+       
+       // If profile changes in real-time, check 2FA status
+       if (updatedProfile.is2FAPending === true) {
+        setIs2FANeeded(true);
+       } else {
+        setIs2FANeeded(false);
+       }
+      }
+     });
 
-  if (loading) {
-    return (
-      <div className="loading-screen">
-        <div className="loading-spinner">Loading...</div>
-      </div>
-    );
-  }
+    } catch (error) {
+     console.error('Error fetching user profile:', error);
+     setUserProfile({ profileCompleted: false });
+    }
+   } else {
+    console.log('No user signed in');
+    setUserProfile(null);
+    setIs2FANeeded(false); // No user, no 2FA needed
+    if (unsubscribeProfile) unsubscribeProfile();
+   }
 
+   setUser(user);
+   setLoading(false);
+  });
+
+  return () => {
+   unsubscribeAuth();
+   if (unsubscribeProfile) unsubscribeProfile();
+  };
+ }, []);
+
+ if (loading) {
   return (
-    <Router>
-      <Routes>
-
-        {/* ✅ Public QR route (no authentication required) */}
-        <Route 
-          path="/submit-ticket"
-          element={<SupportTicketSubmit />}
-        />
-
-        {/* Login Route */}
-        <Route
-          path="/login"
-          element={
-            !user ? (
-              <Login />
-            ) : userProfile?.profileCompleted ? (
-              <Navigate to="/dashboard" replace />
-            ) : (
-              <Login />
-            )
-          }
-        />
-
-        {/* PROTECTED ROUTES WRAPPED BY LAYOUT */}
-        <Route
-          path="/"
-          element={
-            user && userProfile?.profileCompleted ? (
-              <Layout />
-            ) : user ? (
-              <Navigate to="/login" replace />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        >
-
-          {/* All protected pages MUST be direct <Route> children */}
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="customer-profile" element={<CustomerProfile />} />
-          <Route path="campaigns" element={<Campaigns />} />
-          <Route path="segmentation" element={<Segmentation />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="support" element={<SupportTickets />} />
-          
-
-          {/* Default */}
-          <Route index element={<Navigate to="/dashboard" replace />} />
-
-        </Route>
-
-        {/* Catch-all redirect */}
-        <Route
-          path="*"
-          element={
-            <Navigate
-              to={user && userProfile?.profileCompleted ? "/dashboard" : "/login"}
-              replace
-            />
-          }
-        />
-
-      </Routes>
-    </Router>
+   <div className="loading-screen">
+    <div className="loading-spinner">Loading...</div>
+   </div>
   );
+ }
+
+ return (
+  <Router>
+   <Routes>
+
+    {/* ✅ Public QR route (no authentication required) */}
+    <Route 
+     path="/submit-ticket"
+     element={<SupportTicketSubmit />}
+    />
+
+    {/* Login Route - Block Dashboard redirection if 2FA is needed or profile incomplete */}
+    <Route
+     path="/login"
+     element={
+      !user || is2FANeeded || !userProfile?.profileCompleted ? (
+       <Login />
+      ) : (
+       <Navigate to="/dashboard" replace />
+      )
+     }
+    />
+
+    {/* PROTECTED ROUTES WRAPPED BY LAYOUT - Deny access if 2FA is needed or profile incomplete */}
+    <Route
+     path="/"
+     element={
+      user && userProfile?.profileCompleted && !is2FANeeded ? (
+       <Layout />
+      ) : (
+       <Navigate to="/login" replace />
+      )
+     }
+    >
+
+     {/* All protected pages MUST be direct <Route> children */}
+     <Route path="dashboard" element={<Dashboard />} />
+     <Route path="customer-profile" element={<CustomerProfile />} />
+     <Route path="campaigns" element={<Campaigns />} />
+     <Route path="segmentation" element={<Segmentation />} />
+     <Route path="settings" element={<Settings />} />
+     <Route path="support" element={<SupportTickets />} />
+     
+
+     {/* Default */}
+     <Route index element={<Navigate to="/dashboard" replace />} />
+
+    </Route>
+
+    {/* Catch-all redirect */}
+    <Route
+     path="*"
+     element={
+      <Navigate
+       to={user && userProfile?.profileCompleted && !is2FANeeded ? "/dashboard" : "/login"}
+       replace
+      />
+     }
+    />
+
+   </Routes>
+  </Router>
+ );
 }
 
 export default App;
