@@ -22,7 +22,7 @@ const formatDate = (timestamp) => {
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
     return date.toLocaleDateString('en-US', options);
-  } catch (e) {
+  } catch {
     return 'Invalid date';
   }
 };
@@ -158,7 +158,7 @@ const CustomerProfile = () => {
       setLoading(true);
       try {
         await fetchCustomers();
-      } catch (e) {
+      } catch {
         // Error already set in fetchCustomers
       } finally {
         setLoading(false);
@@ -354,7 +354,7 @@ const CustomerProfile = () => {
             if (monthIndex >= 0 && monthIndex < months.length) {
               spendingData[monthIndex] += purchase.amount || 0;
             }
-          } catch (e) {
+          } catch {
             console.warn('Invalid purchase date:', purchase.date);
           }
         });

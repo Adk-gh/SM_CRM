@@ -27,7 +27,7 @@ module.exports = async (req, res) => {
     // -------------------------------------------------------------------
     
     // 1. Set the specific allowed origin (your React dev server)
-    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
     
     // 2. Set the allowed methods
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
