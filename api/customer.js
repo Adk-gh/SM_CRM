@@ -1,4 +1,25 @@
 // sm-crm-app/api/customer.js
+const fetch = require('node-fetch');
+const admin = require('firebase-admin');
+
+// --- Firebase Admin SDK Initialization for CRM DB ---
+if (!admin.apps.length) {
+  try {
+    const serviceAccountJson = process.env.CRM_FIREBASE_CREDENTIALS;
+    if (!serviceAccountJson) {
+      throw new Error("CRM_FIREBASE_CREDENTIALS environment variable is not set.");
+    }
+    const serviceAccount = JSON.parse(serviceAccountJson);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+  } catch (error) {
+    console.error("CRM Firebase Initialization Error:", error.message);
+    throw new Error("Server initialization failed.");
+  }
+}
+
+const db = admin.firestore();
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
@@ -7,15 +28,15 @@ module.exports = async (req, res) => {
 
   try {
     const targetEmail = req.query.email;
-    if (!targetEmail) {
-      return res.status(400).json({ message: "Missing required query parameter: email" });
-    }
 
+    // 🔎 Call Shopping API
     const response = await fetch(
-      `${process.env.SHOPPING_API_URL}?email=${encodeURIComponent(targetEmail)}`,
+      targetEmail
+        ? `${process.env.SHOPPING_API_URL}?email=${encodeURIComponent(targetEmail)}`
+        : `${process.env.SHOPPING_API_URL}`,
       {
         headers: {
-          'Authorization': `Bearer ${process.env.CRM_API_KEY}`,   // ✅ unified variable name
+          'Authorization': `Bearer ${process.env.CRM_API_KEY}`,
           'Content-Type': 'application/json'
         }
       }
@@ -27,6 +48,13 @@ module.exports = async (req, res) => {
     }
 
     const data = await response.json();
+
+    // 💾 Save to CRM DB (create/update customers collection)
+    for (const customer of data.customers) {
+      await db.collection('customers').doc(customer.email).set(customer, { merge: true });
+    }
+
+    // ✅ Return to frontend
     return res.status(200).json(data);
 
   } catch (err) {
