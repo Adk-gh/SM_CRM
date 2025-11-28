@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json.schemastore.org/package.json",
   "name": "sm-crm-app",
   "version": "1.0.0",
   "license": "MIT",
@@ -6,3 +7,4 @@
     "dotenv": "^17.2.3"
   }
 }
+
