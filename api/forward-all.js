@@ -32,6 +32,16 @@ module.exports = async (req, res) => {
     for (const doc of snapshot.docs) {
       const ticket = doc.data();
 
+      // Skip if already forwarded
+      if (ticket.posNotificationStatus === 'sent') {
+        results.push({
+          ticketId: doc.id,
+          status: 'already forwarded - skipped',
+          category: ticket.issueCategory
+        });
+        continue;
+      }
+
       const posPayload = {
         ticketid: doc.id,
         subject: ticket.issueTitle ?? null,
@@ -58,14 +68,21 @@ module.exports = async (req, res) => {
 
         const result = await response.json();
         
-        results.push({
-          ticketId: doc.id, // Changed to camelCase for consistency
-          status: response.ok 
-            ? 'forwarded successfully' // Changed to lowercase
-            : `Failed: ${result.error || response.status}`,
-          category: ticket.issueCategory,
-          response: result
-        });
+        if (response.ok) {
+          results.push({
+            ticketId: doc.id,
+            status: 'forwarded successfully',
+            category: ticket.issueCategory,
+            response: result
+          });
+        } else {
+          results.push({
+            ticketId: doc.id,
+            status: `Failed: ${result.error || result.message || response.status}`,
+            category: ticket.issueCategory,
+            response: result
+          });
+        }
       } catch (fetchError) {
         results.push({
           ticketId: doc.id,
