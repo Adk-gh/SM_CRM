@@ -10,12 +10,10 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 
 module.exports = async (req, res) => {
-  // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -34,7 +32,6 @@ module.exports = async (req, res) => {
     for (const doc of snapshot.docs) {
       const ticket = doc.data();
 
-      // ✅ Build payload with exact field names your Supabase function expects
       const posPayload = {
         ticketid: doc.id,
         subject: ticket.issueTitle ?? null,
@@ -49,9 +46,8 @@ module.exports = async (req, res) => {
             : 'GENERAL_SUPPORT'
       };
 
-      // ✅ Send directly to Supabase Edge Function
       const response = await fetch(
-        'https://spobwqqaskuhcmyeklgk.supabase.co/functions/v1/ticket',
+        "https://spobwqqaskuhcmyeklgk.supabase.co/functions/v1/ticket",
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

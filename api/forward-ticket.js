@@ -2,8 +2,8 @@ const fetch = require('node-fetch');
 require('dotenv').config();
 
 // Environment Variables
-const POS_FUNCTION_URL = process.env.POS_SUPABASE_URL; // Supabase Edge Function URL
-const INV_API_URL = process.env.INV_API_URL;           // Inventory API base
+const POS_FUNCTION_URL = "https://spobwqqaskuhcmyeklgk.supabase.co/functions/v1/ticket"; // Supabase Edge Function URL
+const INV_API_URL = process.env.INV_API_URL;           
 const INVENTORY_API_KEY = process.env.INVENTORY_API_KEY;
 const ONLINESHOPPING_API_URL = process.env.ONLINESHOPPING_API_URL;
 const ONLINESHOPPING_API_KEY = process.env.ONLINESHOPPING_API_KEY;
@@ -57,13 +57,13 @@ module.exports = async (req, res) => {
       case 'billing':
         // ✅ Forward to POS Supabase Edge Function with exact DB schema
         const posPayload = {
-          ticketid: ticketId,                        // ✅ exact field name
-          subject: issueTitle ?? null,               // ✅ exact field name
-          description: issueDescription ?? null,     // ✅ exact field name
-          issue_category: 'billing',                 // ✅ exact field name
-          requesteremail: userEmail ?? null,         // ✅ exact field name
-          severity: 'IMMEDIATE_ATTENTION',           // ✅ exact field name
-          task: 'CUSTOMER_REFUND_ALERT'              // ✅ exact field name
+          ticketid: ticketId,
+          subject: issueTitle ?? null,
+          description: issueDescription ?? null,
+          issue_category: 'billing',
+          requesteremail: userEmail ?? null,
+          severity: 'IMMEDIATE_ATTENTION',
+          task: 'CUSTOMER_REFUND_ALERT'
         };
 
         const posResponse = await fetch(POS_FUNCTION_URL, {
@@ -99,13 +99,13 @@ module.exports = async (req, res) => {
         break;
 
       case 'stock_issue':
-        // ✅ Forward to Inventory (invTicket collection)
+        // ✅ Forward to Inventory
         const invPayload = {
           ticketId,
           subject: issueTitle,
           description: issueDescription,
           requesterEmail: userEmail,
-          issue_category: 'itemnotfound', // DB expects this string
+          issue_category: 'itemnotfound',
           severity: 'IMMEDIATE_ATTENTION',
           task: 'VERIFY_STOCK'
         };
@@ -114,7 +114,7 @@ module.exports = async (req, res) => {
           `${INV_API_URL}/${ticketId}`,
           invPayload,
           INVENTORY_API_KEY,
-          true // use X-API-Key header
+          true
         );
         break;
 
