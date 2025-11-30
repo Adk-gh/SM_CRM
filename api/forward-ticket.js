@@ -60,7 +60,7 @@ module.exports = async (req, res) => {
           ticketid: ticketId,               // ✅ exact field name
           description: issueDescription,    // ✅ exact field name
           issue_category: 'billing',        // ✅ exact field name
-          requestemail: userEmail,          // ✅ exact field name
+          requesteremail: userEmail,          // ✅ exact field name
           severity: 'IMMEDIATE_ATTENTION',  // ✅ exact field name
           task: 'CUSTOMER_REFUND_ALERT'     // ✅ exact field name
         };
