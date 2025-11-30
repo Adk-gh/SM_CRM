@@ -131,12 +131,17 @@
     min-width: 220px;
     z-index: 1000;
     display: none;
-    overflow: hidden;
     transform-origin: top right;
+    
+    /* --- NEW STYLES ADDED --- */
+    padding: 10px;          /* Adds breathing room inside the container */
+    flex-direction: column; /* Stacks items vertically */
+    gap: 8px;               /* Adds space between the buttons */
+    /* ------------------------ */
 }
 
 .profile-menu.active {
-    display: block;
+    display: flex; /* Changed from block to flex to support gap */
     animation: fadeInScale 0.3s ease forwards;
 }
 
@@ -155,25 +160,27 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 14px 18px;
+    padding: 12px 18px; /* Slightly adjusted padding */
     width: 100%;
-    border: none;
-    background: none;
     color: var(--text-primary);
     cursor: pointer;
     transition: all 0.2s ease;
     font-size: 14px;
     text-align: left;
-    border-bottom: 1px solid var(--border-light);
+    
+    /* --- NEW STYLES ADDED --- */
+    background: var(--bg-secondary);        /* Light background for button look */
+    border: 1px solid var(--border-light);  /* Full border instead of bottom only */
+    border-radius: 8px;                     /* Rounded corners */
+    /* ------------------------ */
 }
 
-.profile-menu-item:last-child {
-    border-bottom: none;
-}
+/* Removed .profile-menu-item:last-child as it is no longer needed */
 
 .profile-menu-item:hover {
     background: var(--accent-light);
     color: var(--accent-primary);
+    border-color: var(--accent-primary); /* Highlight border on hover */
     transform: translateX(3px);
 }
 
@@ -298,42 +305,59 @@
 
 /* Detail Item List Styling (Grid Layout) */
 .detail-item {
-    display: grid;
-    grid-template-columns: 1fr auto; 
-    gap: 20px;
-    align-items: center;
-    padding: 15px 0;
-    border-bottom: 1px dashed var(--border-light);
-}
-
-.detail-item:last-child {
-    border-bottom: none;
+  display: grid;
+  /* CHANGE: 'max-content' shrinks the label column to fit the text exactly */
+  /* This pulls the value (2nd column) right next to the label */
+  grid-template-columns: max-content minmax(0, 1fr); 
+  gap: 12px; /* Small space between the colon and the value */
+  
+  align-items: center; 
+  margin-bottom: 12px; 
+  
+  /* UNIFIED GREY CONTAINER */
+  background-color: var(--bg-secondary); 
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 12px 15px; 
+  width: 100%; 
 }
 
 .detail-label {
-    font-size: 15px;
-    font-weight: 500;
-    color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: left;
+  white-space: nowrap; 
+  background: transparent;
 }
 
 .detail-value {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--text-primary);
-    word-break: break-word;
-    text-align: right;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-align: left;
+  
+  background-color: transparent; 
+  border: none;
+  padding: 0;
+  min-height: auto;
+  
+  /* Content Handling */
+  width: 100%; 
+  white-space: nowrap; 
+  overflow-x: auto; 
+  scrollbar-width: none; 
+  -ms-overflow-style: none;
 }
 
-/* Role Badge in Drawer */
-.detail-item .role-badge {
-    background: var(--accent-primary);
-    color: white;
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: capitalize;
-    letter-spacing: 0.5px;
+.detail-value::-webkit-scrollbar {
+  display: none;
+}
+
+.detail-item:last-child {
+  border-bottom: 1px solid var(--border-light);
 }
 
 /* Status Indicators */

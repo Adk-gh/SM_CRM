@@ -469,90 +469,146 @@
 }
 
 /* Success View Styles */
+/* Success View Styles */
 .success-message {
-  text-align: center;
-  padding: 20px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Centers all flex children horizontally */
+  justify-content: center;
+  text-align: center; /* Centers text inside the children */
+  padding: 40px 20px;
+  width: 100%;
+  max-width: 600px; /* Prevents content from getting too wide on large screens */
+  margin: 0 auto; /* Centers the container itself */
 }
 
 .success-icon {
   margin-bottom: 24px;
   display: flex;
   justify-content: center;
+  width: 100%;
 }
 
 .success-icon-large {
   width: 80px;
   height: 80px;
-  color: var(--success-color); /* Uses success-color */
+  color: var(--success-color);
 }
 
 .success-message h2 {
-  color: var(--text-primary); /* Uses text-primary */
+  color: var(--text-primary);
   font-size: 1.75rem;
   font-weight: 700;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .success-message p {
-  color: var(--gray-600); /* Uses mapped gray-600 */
+  color: var(--gray-600);
   font-size: 1.1rem;
-  margin-bottom: 24px;
+  margin-bottom: 30px;
   line-height: 1.6;
+  max-width: 80%; /* Improves readability */
 }
 
 .ticket-id-display {
-  background: var(--accent-light); /* Uses accent-light */
-  padding: 20px;
+  background: var(--accent-light);
+  padding: 16px 24px;
   border-radius: 12px;
-  margin: 24px 0;
+  margin: 0 auto 30px auto; /* Centers the box */
   font-weight: 700;
-  color: var(--accent-primary); /* Uses accent-primary */
-  border-left: 4px solid var(--accent-primary); /* Uses accent-primary */
-  font-size: 1.2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  color: var(--accent-primary);
+  /* Changed from border-left to border-top/bottom or full border for better centered symmetry */
+  border: 1px solid var(--accent-primary); 
+  font-size: 1.1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  display: inline-block; /* Allows the box to wrap text tight rather than full width */
+  width: auto;
+  max-width: 100%;
+  word-break: break-all; /* Prevents long IDs from breaking layout */
 }
 
 .ticket-details-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr; /* Creates two equal columns */
   gap: 20px;
-  margin: 24px 0;
+  margin: 10px 0 30px 0;
+  width: 100%;
+  padding: 24px;
+  background: var(--gray-50); /* Keeps the subtle background */
+  border-radius: 12px;
+  justify-items: center; /* Centers content horizontally in each cell */
+}
+
+/* Target the FIRST item (Status) to span the entire top row */
+.ticket-detail-item:nth-child(1) {
+  grid-column: 1 / -1; /* Spans from start to end */
+  width: 100%;
+  border-bottom: 1px solid var(--border-light); /* Adds a separator line */
+  padding-bottom: 20px; /* Space above the line */
+  margin-bottom: 10px; /* Space below the line */
 }
 
 .ticket-detail-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+}
+
+/* ... existing code ... */
+
+/* Update the Responsive section to handle the grid on mobile */
+@media (max-width: 768px) {
+  /* ... other existing media queries ... */
+  
+  .ticket-details-grid {
+    grid-template-columns: 1fr; /* Stacks everything in one column on mobile */
+    gap: 24px;
+  }
+  
+  .ticket-detail-item:nth-child(1) {
+    border-bottom: none; /* Remove separator on mobile */
+    padding-bottom: 0;
+    margin-bottom: 0;
+  }
 }
 
 .detail-label {
-  font-size: 0.875rem;
-  color: var(--gray-500); /* Uses mapped gray-500 */
-  font-weight: 500;
+  font-size: 0.85rem;
+  color: var(--gray-500);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .detail-value {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-primary); /* Uses text-primary */
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: center;
 }
 
 .status-open {
-  color: var(--success-color); /* Uses success-color */
+  color: var(--success-color);
+  background: rgba(72, 187, 120, 0.1);
+  padding: 4px 12px;
+  border-radius: 20px;
+  display: inline-block;
 }
 
 .btn-success {
-  /* Updated to use new success variables */
-  background: linear-gradient(135deg, var(--success-color) 0%, var(--success-dark) 100%); 
-  /* Updated box-shadow to use success-color */
-  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.2); 
+  background: linear-gradient(135deg, var(--success-color) 0%, var(--success-dark) 100%);
+  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.2);
+  /* Ensure button width is controlled in the success view */
+  max-width: 300px; 
+  margin: 0 auto;
 }
 
 .btn-success:hover:not(:disabled) {
-  /* Updated to use new success variables */
-  background: linear-gradient(135deg, var(--success-color) 0%, var(--success-color) 100%); 
-  /* Updated box-shadow to use success-color */
-  box-shadow: 0 6px 20px rgba(72, 187, 120, 0.3); 
+  background: linear-gradient(135deg, var(--success-color) 0%, var(--success-color) 100%);
+  box-shadow: 0 6px 20px rgba(72, 187, 120, 0.3);
 }
 
 /* Message Notification */
@@ -561,14 +617,46 @@
   top: 20px;
   right: 20px;
   z-index: 1000;
-  padding: 16px 20px;
+  padding: 20px 45px 20px 20px; /* Added more padding on right for the X button */
   border-radius: 12px;
   box-shadow: var(--shadow-lg);
   display: flex;
-  align-items: center;
+  align-items: flex-start; /* Aligns text to top if it wraps */
   gap: 12px;
   animation: slideIn 0.3s ease;
   max-width: 400px;
+  
+  /* Ensure the dismiss button positions relative to this box */
+  /* If you have 'fixed' above, that works, but adding this ensures text flow works */
+}
+
+/* Position the X button */
+.notification-dismiss {
+  position: absolute; /* Take button out of the flow */
+  top: 10px;          /* Distance from top */
+  right: 10px;        /* Distance from right */
+  background: rgba(0, 0, 0, 0.1); /* Optional: faint background for the button area */
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 50%; /* Make it circular */
+  width: 24px;
+  height: 24px;
+  transition: all 0.2s ease;
+}
+
+.notification-dismiss:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.notification-icon {
+  margin-top: 2px; /* Slight adjustment to align with text */
 }
 
 @keyframes slideIn {

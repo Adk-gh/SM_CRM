@@ -7,5 +7,9 @@
     "dotenv": "^17.2.3",
     "firebase-admin": "^13.6.0",
     "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "wait-on": "^9.0.3"
   }
 }

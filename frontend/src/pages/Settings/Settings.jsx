@@ -117,24 +117,21 @@ const RolesSection = ({ state, dispatch, updateUserRole }) => {
 
   return (
     <div className="content-card roles-container">
-      <div className="card-header">
-        <div className="card-icon"><i className="fas fa-user-shield"></i></div>
-        <h3 className="card-title">User Roles & Permissions</h3>
-      </div>
-      
-      {/* Search and Filter Controls */}
+      {/* Search and Filter Controls Row */}
       <div className="search-filter-container">
         <div className="search-box">
           <i className="fas fa-search"></i>
           <input 
             type="text" 
-            placeholder="Search users by name, email, branch, department, or role..."
+            placeholder="Search users by name, email, branch..." 
             value={searchTerm}
             onChange={(e) => dispatch({ type: 'SET_SEARCH_TERM', payload: e.target.value })}
           />
         </div>
-        <div className="filter-select">
+        
+        <div className="filter-dropdown-container">
           <select 
+            className="filter-select"
             value={roleFilter} 
             onChange={(e) => dispatch({ type: 'SET_ROLE_FILTER', payload: e.target.value })}
           >
@@ -147,6 +144,14 @@ const RolesSection = ({ state, dispatch, updateUserRole }) => {
         </div>
       </div>
 
+      {/* Header for User List Section */}
+      <div className="user-list-header">
+         <h4 className="manage-users-title">Manage User Assignments</h4>
+         <span className="user-count">
+           {loading ? '...' : `${filteredUsers.length} users`}
+         </span>
+      </div>
+
       {/* Error Message */}
       {error && (
         <div className="error-message">
@@ -156,15 +161,7 @@ const RolesSection = ({ state, dispatch, updateUserRole }) => {
       )}
       
       {/* Scrollable User List */}
-      <div className="user-list-container">
-        <div className="user-list-header">
-          <h4>Manage User Assignments</h4>
-          <span className="user-count">
-            {loading ? 'Loading...' : `${filteredUsers.length} users`}
-          </span>
-        </div>
-        
-        <div className="user-list-scrollable">
+      <div className="user-list-scrollable">
           {loading ? (
             <div className="loading-state">
               <i className="fas fa-spinner fa-spin"></i>
@@ -189,14 +186,13 @@ const RolesSection = ({ state, dispatch, updateUserRole }) => {
               />
             ))
           )}
-        </div>
       </div>
       
-      {/* Informational Note */}
-      <div className="note-info">
+      {/* Informational Note (Optional - can be removed if cleaner look desired) */}
+      {/* <div className="note-info">
         <i className="fas fa-info-circle"></i>
-        <span>To manage role permissions (e.g., what a 'Manager' can do), please refer to the system configuration documentation. This section only updates user-to-role assignments.</span>
-      </div>
+        <span>To manage role permissions, refer to system docs.</span>
+      </div> */}
     </div>
   );
 };
@@ -316,7 +312,7 @@ const Settings = () => {
     }
   }, [users]); 
 
-  // --- Section Definitions (Simplified for Admin Focus) ---
+  // --- Section Definitions ---
   const sections = {
     roles: {
       icon: 'fa-user-shield',
