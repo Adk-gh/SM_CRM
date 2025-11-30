@@ -1,1705 +1,551 @@
 import React, { useState, useEffect } from 'react';
-
 import {
-
-createUserWithEmailAndPassword,
-
-updateProfile,
-
-signInWithEmailAndPassword,
-
-sendPasswordResetEmail,
-
-sendEmailVerification,
-
-signOut
-
+  createUserWithEmailAndPassword,
+  updateProfile,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  sendEmailVerification,
+  signOut
 } from 'firebase/auth';
-
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-
-import emailjs from '@emailjs/browser'; // <--- EMAILJS IMPORTED
-
+import emailjs from '@emailjs/browser';
 import { auth, db } from '../../../firebase';
-
 import logo from '../../assets/logo.jpg';
 
-import './Login.css';
+// --- CSS STYLES ---
+const styles = `
+:root {
+  --dark-blue: #395A7F;
+  --mid-blue: #6E9FC1;
+  --pale-blue: #A3CAE9;
+  --light-gray: #E9ECEE;
+  --white: #ffffff;
+  --muted: #ACACAC;
+  --success: #2e7d32;
+  --danger: #d32f2f;
+  --shadow-lift: 0 14px 28px rgba(0,0,0,0.1), 0 10px 10px rgba(0,0,0,0.08);
+  --radius: 12px;
+  --transition: all 0.4s ease-in-out;
+}
 
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: "Inter", system-ui, sans-serif; }
 
+.login-page-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100vw;
+  background: linear-gradient(135deg, var(--light-gray) 0%, var(--pale-blue) 100%);
+  overflow: hidden;
+  padding: 20px; /* Add padding around the main container on smaller screens */
+}
 
-// --- INLINE SVG ICONS (Black & White Aesthetic) ---
+.container {
+  background-color: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lift);
+  position: relative;
+  overflow: hidden;
+  /* Increased width and min-height for more space */
+  width: 1000px; 
+  max-width: 95%;
+  min-height: 550px; 
+  display: flex;
+  transition: var(--transition);
+}
 
+.form-container {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  /* Increased padding for better internal spacing */
+  padding: 40px 50px; 
+  text-align: center;
+}
+
+.sign-in-container { left: 0; width: 50%; z-index: 2; }
+.sign-up-container { left: 0; width: 50%; opacity: 0; z-index: 1; }
+
+.container.right-panel-active .sign-in-container { transform: translateX(100%); opacity: 0; }
+.container.right-panel-active .sign-up-container { transform: translateX(100%); opacity: 1; z-index: 5; }
+
+.profile-setup-container {
+  left: 0; width: 100%; height: 100%; z-index: 10; opacity: 0; pointer-events: none;
+  background: var(--white); display: flex; flex-direction: column; align-items: center; justify-content: center;
+  /* Increased padding for profile setup as well */
+  padding: 40px 50px; 
+}
+.container.profile-setup-active .profile-setup-container { opacity: 1; pointer-events: all; z-index: 200; }
+
+form {
+  background-color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  /* Ensure form takes up space and has gaps */
+  gap: 15px; 
+}
+
+.logo { 
+  width: 90px; /* Slightly bigger logo */
+  height: 90px; 
+  border-radius: 50%; 
+  object-fit: cover; 
+  margin-bottom: 25px; /* Increased space below logo */
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+}
+h1 { font-weight: 700; color: var(--dark-blue); margin-bottom: 10px; font-size: 28px; }
+p { color: var(--dark-blue); font-size: 15px; margin-bottom: 30px; opacity: 0.8; }
+
+input, select {
+  background-color: #f4f8fb; border: 1px solid #e1e5e9; padding: 14px 18px; margin: 10px 0; /* More padding and margin */
+  width: 100%; max-width: 340px; /* Slightly wider inputs */
+  border-radius: 8px; font-size: 15px; color: var(--dark-blue); transition: var(--transition);
+}
+input:focus, select:focus { outline: none; border-color: var(--mid-blue); background-color: #fff; box-shadow: 0 0 0 3px rgba(110, 159, 193, 0.15); }
+
+.password-input-wrapper { position: relative; width: 100%; max-width: 340px; margin: 10px 0; }
+.password-input-wrapper input { width: 100%; max-width: 100%; margin: 0; padding-right: 45px; }
+.password-toggle { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--muted); display: flex; }
+.password-toggle:hover { color: var(--dark-blue); }
+
+button {
+  border-radius: 30px; border: none; background-color: var(--dark-blue); color: #ffffff;
+  font-size: 14px; font-weight: 600; padding: 14px 50px; letter-spacing: 1px; text-transform: uppercase;
+  transition: transform 80ms ease-in; margin-top: 30px; /* Increased margin top */
+  cursor: pointer; box-shadow: 0 4px 10px rgba(57, 90, 127, 0.2);
+}
+button:active { transform: scale(0.95); }
+button:focus { outline: none; }
+button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.ghost-text-button {
+  background: none; color: var(--danger); padding: 8px; margin: 10px 0; font-size: 13px;
+  text-transform: none; letter-spacing: 0; box-shadow: none; width: auto; display: inline-block;
+}
+.ghost-text-button:hover { text-decoration: underline; }
+
+.overlay-container { position: absolute; top: 0; left: 50%; width: 50%; height: 100%; overflow: hidden; transition: transform 0.6s ease-in-out; z-index: 100; }
+.container.right-panel-active .overlay-container { transform: translateX(-100%); }
+.overlay {
+  background: linear-gradient(to right, var(--dark-blue), var(--mid-blue)); color: #ffffff;
+  position: relative; left: -100%; height: 100%; width: 200%; transform: translateX(0); transition: transform 0.6s ease-in-out;
+}
+.container.right-panel-active .overlay { transform: translateX(50%); }
+.overlay-panel {
+  position: absolute; display: flex; align-items: center; justify-content: center; flex-direction: column;
+  /* Increased padding in overlay */
+  padding: 0 60px; 
+  text-align: center; top: 0; height: 100%; width: 50%; transform: translateX(0); transition: transform 0.6s ease-in-out;
+}
+.overlay-left { transform: translateX(-20%); }
+.container.right-panel-active .overlay-left { transform: translateX(0); }
+.overlay-right { right: 0; transform: translateX(0); }
+.container.right-panel-active .overlay-right { transform: translateX(20%); }
+
+button.ghost { background-color: transparent; border-color: #ffffff; border-width: 2px; margin-top: 25px; }
+
+.profile-setup-container form { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px; }
+.profile-setup-steps { display: flex; gap: 50px; position: relative; margin-bottom: 40px; }
+.profile-setup-steps::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: #e0e0e0; z-index: 0; }
+.step {
+  width: 45px; height: 45px; border-radius: 50%; background: white; border: 2px solid #e0e0e0; color: #ACACAC; font-weight: bold; font-size: 16px;
+  display: flex; align-items: center; justify-content: center; z-index: 1; position: relative; transition: var(--transition);
+}
+.step.active { border-color: var(--dark-blue); background: var(--dark-blue); color: white; }
+
+.profile-input-group { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 15px; margin-bottom: 30px; }
+.profile-input-group input, .profile-input-group select { max-width: 100%; margin: 0; }
+
+.profile-review {
+  background: #f8f9fa; border: 1px solid #e1e5e9; border-radius: 8px; padding: 25px; width: 100%; max-width: 420px; margin-bottom: 30px; font-size: 14px; text-align: left;
+}
+.review-item { display: flex; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px dashed #e0e0e0; padding-bottom: 8px; }
+.review-item strong { color: var(--dark-blue); font-weight: 600; }
+.review-item span { color: #555; text-align: right; }
+
+.form-navigation { display: flex; gap: 20px; width: 100%; max-width: 420px; justify-content: center; margin-top: 10px; }
+.form-navigation button { width: 100%; margin: 0; padding: 14px 0; }
+.btn-back { background-color: #90a4ae; }
+.btn-back:hover { background-color: #78909c; }
+.btn-complete { background-color: var(--success); }
+
+.error-message { color: var(--danger); font-size: 13px; margin-bottom: 15px; background: #ffebee; padding: 12px; border-radius: 6px; width: 100%; max-width: 340px; }
+.success-message { color: var(--success); font-size: 13px; margin-bottom: 15px; background: #e8f5e9; padding: 12px; border-radius: 6px; width: 100%; max-width: 340px; }
+
+@media (max-width: 768px) {
+  .container { min-height: 650px; width: 100%; border-radius: var(--radius); }
+  .form-container { padding: 40px 30px; }
+  .overlay-container { display: none; }
+  .sign-in-container, .sign-up-container { width: 100%; position: absolute; }
+  .sign-in-container { z-index: 5; opacity: 1; }
+  .container.right-panel-active .sign-in-container { opacity: 0; z-index: 1; }
+  .container.right-panel-active .sign-up-container { opacity: 1; z-index: 5; transform: none; }
+  .mobile-toggle { display: block; margin-top: 25px; color: var(--mid-blue); font-size: 14px; cursor: pointer; text-decoration: underline; }
+}
+@media (min-width: 769px) { .mobile-toggle { display: none; } }
+`;
+
+// --- ICONS ---
 const EyeIcon = () => (
-
- <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-
-  <path d="M12 9a3.75 3.75 0 100 7.5A3.75 3.75 0 0012 9z" />
-
-  <path fillRule="evenodd" d="M11.96 4.75c-.213.06-.431.11-.645.158A13.292 13.292 0 005.618 6.55.75.75 0 005 7.276v2.309c0 .762.483 1.487 1.282 1.758a11.137 11.137 0 0011.436-.001c.799-.271 1.282-.996 1.282-1.758V7.276c0-.342-.206-.653-.538-.727a13.29 13.29 0 00-5.697-1.644.75.75 0 00-.645 0c-.214.048-.432.098-.645.158zm.04 12.339A6.75 6.75 0 105.25 12a6.75 6.75 0 006.75 5.089z" clipRule="evenodd" />
-
- </svg>
-
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
 );
-
-
-
 const EyeSlashIcon = () => (
-
- <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-
-  <path d="M12.004 5.928a.75.75 0 01.75-.75A13.294 13.294 0 006.545 7.15c-.342.074-.538.385-.538.727v2.309c0 .762.483 1.487 1.282 1.758a11.137 11.137 0 0011.436-.001c.799-.271 1.282-.996 1.282-1.758V7.877c0-.342-.206-.653-.538-.727a13.294 13.294 0 00-6.208-1.977.75.75 0 01-.75-.75z" />
-
-  <path fillRule="evenodd" d="M12.004 17.589A6.75 6.75 0 0018.75 12c0-1.879-.785-3.593-2.05-4.821a.75.75 0 011.026-1.085A8.23 8.23 0 0120.25 12c0 4.556-3.79 8.25-8.496 8.25-2.227 0-4.275-.898-5.748-2.394a.75.75 0 011.026-1.085c1.265 1.228 2.978 2.012 4.852 2.012zM12 9a3.75 3.75 0 100 7.5A3.75 3.75 0 0012 9z" clipRule="evenodd" />
-
-  <path fillRule="evenodd" d="M3.567 4.026c.213-.06.431-.11.645-.158A13.292 13.292 0 019.215.35c.241-.07.49-.105.74-.105.25 0 .5.035.741.105a13.292 13.292 0 015.003 1.518c.213.048.431.098.645.158a.75.75 0 01.696.883c-.046.331-.417.47-.696.398-1.57-.42-3.238-.682-4.98-.682-1.742 0-3.41.262-4.98.682-.279.073-.65-.067-.696-.398a.75.75 0 01.696-.883z" clipRule="evenodd" />
-
- </svg>
-
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M1 1l22 22"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/></svg>
 );
-
-// -------------------------------------------------------------------
-
-
-
-
 
 const Login = () => {
-
-const [isRightPanelActive, setIsRightPanelActive] = useState(false);
-
-const [showProfileSetup, setShowProfileSetup] = useState(false);
-
-const [currentStep, setCurrentStep] = useState(1);
-
-const [formData, setFormData] = useState({
-
-loginEmail: '',
-
-loginPassword: '',
-
-signupEmail: '',
-
-signupPassword: '',
-
-signupConfirmPassword: '',
-
-signupFullName: '',
-
-signupUsername: ''
-
-});
-
-const [profileData, setProfileData] = useState({
-
-fullName: '',
-
-position: '',
-
-department: '',
-
-branch: '',
-
-email: '',
-
-phone: ''
-
-});
-
-const [loading, setLoading] = useState(false);
-
-const [error, setError] = useState('');
-
-const [successMessage, setSuccessMessage] = useState('');
-
-
-
-// 🔒 SECURITY STATE: Account Lockout/Brute-Force Protection
-
-const [failedAttempts, setFailedAttempts] = useState(0);
-
-const MAX_ATTEMPTS = 5;
-
-const LOCKOUT_DURATION_MS = 30000;
-
-
-
-// 🔒 2FA STATE
-
-const [is2FAEnabled, setIs2FAEnabled] = useState(false);
-
-const [twoFACode, setTwoFACode] = useState('');
-
-const [expected2FACode, setExpected2FACode] = useState('');
-
-const [twoFATimer, setTwoFATimer] = useState(0);
-
-const TWO_FA_EXPIRY_SECONDS = 120; // Code expires after 2 minutes
-
-// ------------------------------------------------------------------
-
-
-
-// UI State
-
-const [showLoginPassword, setShowLoginPassword] = useState(false);
-
-const [showSignupPassword, setShowSignupPassword] = useState(false);
-
-const [showSignupConfirmPassword, setShowSignupConfirmPassword] = useState(false);
-
-
-
-// Mock branches data
-
-const branches = ['SM Megamall', 'SM Mall of Asia', 'SM North EDSA', 'SM City Cebu', 'SM City Davao'];
-
-
-
-
-
- useEffect(() => {
-
-  const user = auth.currentUser;
-
-  if (showProfileSetup && user) {
-
-   setProfileData(prev => ({
-
-    ...prev,
-
-    email: user.email,
-
-    fullName: user.displayName || prev.fullName
-
-   }));
-
-  }
-
- }, [showProfileSetup]);
-
-
-
-
-
-// 🔒 2FA Timer Effect
-
-useEffect(() => {
-
- let timerInterval;
-
- if (is2FAEnabled && twoFATimer > 0) {
-
-  timerInterval = setInterval(() => {
-
-   setTwoFATimer(prev => prev - 1);
-
-  }, 1000);
-
- } else if (twoFATimer === 0 && is2FAEnabled) {
-
-  setError('The verification code has expired. Please try logging in again.');
-
-  setIs2FAEnabled(false); // Force back to login screen
-
-  // Sign out user from temporary Phase 1 login
-
-  if (auth.currentUser) {
-
-      // ⭐ CRITICAL: Clear the is2FAPending flag on sign-out/expiry failure
-
-      setDoc(doc(db, 'users', auth.currentUser.uid), { is2FAPending: false }, { merge: true });
-
-   signOut(auth);
-
-  }
-
- }
-
-
-
- return () => clearInterval(timerInterval);
-
-}, [is2FAEnabled, twoFATimer]);
-
-
-
-
-
-const handleInputChange = (e) => {
-
-setFormData({
-
-...formData,
-
-[e.target.name]: e.target.value
-
-});
-
- // Clear password match error when typing
-
- if (e.target.name === 'signupPassword' || e.target.name === 'signupConfirmPassword') {
-
-  setError('');
-
- }
-
-};
-
-
-
-const handleProfileInputChange = (e) => {
-
-setProfileData({
-
-...profileData,
-
-[e.target.name]: e.target.value
-
-});
-
-};
-
- 
-
-// HANDLER FUNCTIONS FOR TOGGLING PASSWORD VISIBILITY
-
-const toggleLoginPasswordVisibility = () => {
-
- setShowLoginPassword(prev => !prev);
-
-};
-
-
-
-const toggleSignupPasswordVisibility = () => {
-
- setShowSignupPassword(prev => !prev);
-
-};
-
-
-
-const toggleSignupConfirmPasswordVisibility = () => {
-
- setShowSignupConfirmPassword(prev => !prev);
-
-};
-
-// ------------------------------------------------------------------
-
-
-
- // --- VALIDATION FUNCTION ---
-
- const validateSignupForm = (password, confirmPassword) => {
-
-  // 1. Password Match Check
-
-  if (password !== confirmPassword) {
-
-   setError('The password and confirm password fields must match.');
-
-   return false;
-
-  }
-
-
-
-  // 2. Password Strength Check
-
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-
-  if (!passwordRegex.test(password)) {
-
-   setError(
-
-    'Password must be at least 8 characters and include: one uppercase, one lowercase, one number, and one special character (@$!%*?&).'
-
-   );
-
-   return false;
-
-  }
-
-
-
-  return true;
-
- };
-
- // --------------------------------
-
-
-
-// --- 1. Sign-Up Handler: Creates user, sends verification email, and SIGNS OUT ---
-
-const handleSignUp = async (e) => {
-
-e.preventDefault();
-
-setLoading(true);
-
-setError('');
-
-setSuccessMessage('');
-
-
-
- const password = formData.signupPassword;
-
- const confirmPassword = formData.signupConfirmPassword;
-
-
-
- // Run new validation logic
-
- if (!validateSignupForm(password, confirmPassword)) {
-
-  setLoading(false);
-
-  return;
-
- }
-
-
-
-try {
-
-const userCredential = await createUserWithEmailAndPassword(
-
- auth,
-
- formData.signupEmail,
-
- password
-
-);
-
-
-
-const user = userCredential.user;
-
-
-
-await updateProfile(user, {
-
- displayName: formData.signupFullName
-
-});
-
-
-
-// Send email verification right after sign-up
-
-await sendEmailVerification(user);
-
-
-
-// Store basic user info
-
-await setDoc(doc(db, 'users', user.uid), {
-
- fullName: formData.signupFullName,
-
- email: formData.signupEmail,
-
- username: formData.signupUsername,
-
- createdAt: new Date(),
-
- role: 'user',
-
- profileCompleted: false,
-
- emailVerified: false, // Explicitly tracked in Firestore
-
- is2FAPending: false // Initialize the 2FA flag
-
-});
-
-
-
-console.log('User created successfully. Verification email sent. Signing out.');
-
-
-
-// Sign the user out immediately after creation
-
-await signOut(auth);
-
-
-
-// Clear sign up form
-
-setFormData({
-
- ...formData,
-
- signupFullName: '',
-
- signupEmail: '',
-
- signupUsername: '',
-
- signupPassword: '',
-
- signupConfirmPassword: ''
-
-});
-
-
-
-setSuccessMessage('✅ Account created! A verification email has been sent. Please **verify your email** first, and then log in to complete your profile.');
-
-setIsRightPanelActive(false); // Switch to sign-in view
-
-setShowProfileSetup(false); // Hide profile setup
-
-
-
-} catch (error) {
-
-console.error('Error signing up:', error);
-
-
-
-if (error.code === 'auth/email-already-in-use') {
-
- setError('This email is already registered. Please use a different email or sign in.');
-
-} else if (error.code === 'auth/invalid-email') {
-
- setError('Invalid email address format.');
-
-} else {
-
- setError(`Signup failed: ${error.message}`);
-
-}
-
-} finally {
-
-setLoading(false);
-
-}
-
-};
-
-
-
-// --- 2. Login Handler: PHASE 1 - Validate credentials & Initiate 2FA ---
-
-const handleLogin = async (e) => {
-
- e.preventDefault();
-
-
-
- // 🔒 SECURITY CHECK: Lockout enforcement
-
- if (failedAttempts >= MAX_ATTEMPTS) {
-
-  setError(`Account locked due to too many failed attempts. Please wait ${LOCKOUT_DURATION_MS / 1000} seconds.`);
-
-  return;
-
- }
-
-
-
- setLoading(true);
-
- setError('');
-
- setSuccessMessage('');
-
-
-
- try {
-
-  const userCredential = await signInWithEmailAndPassword(
-
-   auth,
-
-   formData.loginEmail,
-
-   formData.loginPassword
-
-  );
-
-
-
-  const user = userCredential.user;
-
-
-
-  // Check 1: Email Verification
-
-  if (!user.emailVerified) {
-
-   await signOut(auth);
-
-   // Firebase limits how often this can be sent. If it fails, it's usually due to rate limiting.
-
-   await sendEmailVerification(user);
-
- 
-
-   setError('❌ Your email address is not verified. A new verification link has been sent. Please check your inbox (and SPAM folder).');
-
- 
-
-   setFormData({ ...formData, loginPassword: '' });
-
-   setLoading(false);
-
-   return;
-
-  }
-
-
-
-  // 🔒 Email Verified: Proceed to 2FA Phase
-
-  setFailedAttempts(0);
-
-
-
-  // ⭐ CRITICAL STEP 1: Set flag in Firestore
-
-  await setDoc(doc(db, 'users', user.uid), {
-
-   is2FAPending: true,
-
-  }, { merge: true });
-
-
-
-  // ----------------------------------------------------------------------------------
-
-  // 📧 SENDING EMAIL VIA EMAILJS (ACTUAL CODE)
-
-  // ----------------------------------------------------------------------------------
-
- 
-
-  // 1. Generate the code
-
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-
- 
-
-  // 2. Define EmailJS Service Constants (***REPLACE THESE WITH YOUR ACTUAL KEYS***)
-
-  const SERVICE_ID = "service_vg58qh8"; // e.g. "service_8432"
-
-  const TEMPLATE_ID = "template_av0qj19"; // e.g. "template_8432"
-
-  const PUBLIC_KEY = "6XU-uQ7Og0d4oAykV"; // e.g. "user_8432..."
-
-
-
-  // 3. Prepare template parameters (Must match {{variables}} in your EmailJS template)
-
-  const templateParams = {
-
-   to_email: user.email,
-
-   to_name: user.displayName || "User",
-
-   code: code,
-
+  const [isRightPanelActive, setIsRightPanelActive] = useState(false);
+  const [showProfileSetup, setShowProfileSetup] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [formData, setFormData] = useState({
+    loginEmail: '', loginPassword: '', signupEmail: '', signupPassword: '', signupConfirmPassword: '', signupFullName: '', signupUsername: ''
+  });
+  const [profileData, setProfileData] = useState({
+    fullName: '', position: '', department: '', branch: '', email: '', phone: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
+  // 🔒 Security & 2FA State
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const MAX_ATTEMPTS = 5;
+  const [is2FAEnabled, setIs2FAEnabled] = useState(false);
+  const [twoFACode, setTwoFACode] = useState('');
+  const [expected2FACode, setExpected2FACode] = useState('');
+  const [twoFATimer, setTwoFATimer] = useState(0);
+
+  // UI State
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
+  const [showSignupConfirmPassword, setShowSignupConfirmPassword] = useState(false);
+
+  const branches = ['SM Megamall', 'SM Mall of Asia', 'SM North EDSA', 'SM City Cebu', 'SM City Davao'];
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (showProfileSetup && user) {
+      setProfileData(prev => ({ ...prev, email: user.email, fullName: user.displayName || prev.fullName }));
+    }
+  }, [showProfileSetup]);
+
+  useEffect(() => {
+    let timerInterval;
+    if (is2FAEnabled && twoFATimer > 0) {
+      timerInterval = setInterval(() => setTwoFATimer(prev => prev - 1), 1000);
+    } else if (twoFATimer === 0 && is2FAEnabled) {
+      setError('Verification code expired. Please log in again.');
+      setIs2FAEnabled(false);
+      if (auth.currentUser) {
+        setDoc(doc(db, 'users', auth.currentUser.uid), { is2FAPending: false }, { merge: true });
+        signOut(auth);
+      }
+    }
+    return () => clearInterval(timerInterval);
+  }, [is2FAEnabled, twoFATimer]);
+
+  const handleInputChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setError('');
   };
 
-
-
-  console.log(`Attempting to send 2FA code to ${user.email}...`);
-
- 
-
-  // 4. Send the email (This is where the network request happens)
-
-  await emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams, PUBLIC_KEY);
-
-
-
-  console.log('2FA Email sent successfully');
-
- 
-
-  // ----------------------------------------------------------------------------------
-
-
-
-  // Set UI state for 2FA screen
-
-  setExpected2FACode(code);
-
-  setIs2FAEnabled(true);
-
-  setTwoFATimer(TWO_FA_EXPIRY_SECONDS);
-
-
-
-  // Clear password for security
-
-  setFormData(prev => ({ ...prev, loginPassword: '' }));
-
-
-
-  setSuccessMessage(`A 6-digit verification code has been sent to ${user.email}. It expires in ${TWO_FA_EXPIRY_SECONDS} seconds.`);
-
-
-
- } catch (error) {
-
-  console.error('Error logging in:', error);
-
- 
-
-  // Check if the error is from EmailJS failing to send (network, bad key, etc.)
-
-  if (error.status && error.status !== 200) {
-
-   setError('Verification email failed to send (Email Service Error). Please try again later.');
-
-  } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
-
-   const newAttempts = failedAttempts + 1;
-
-   setFailedAttempts(newAttempts);
-
-
-
-   if (newAttempts >= MAX_ATTEMPTS) {
-
-    setError(`Too many failed login attempts. Locking account for ${LOCKOUT_DURATION_MS / 1000} seconds.`);
-
-    setTimeout(() => {
-
-     setFailedAttempts(0);
-
-     setError('');
-
-    }, LOCKOUT_DURATION_MS);
-
-   } else {
-
-    setError('Invalid email or password. Please try again.');
-
-   }
-
-  } else {
-
-   setError(`Login failed: ${error.message}`);
-
-  }
-
- } finally {
-
-  setLoading(false);
-
- }
-
-};
-
-
-
-// --- 3. Handle 2FA Code Verification: PHASE 2 - Final Login Check ---
-
-const handleVerify2FACode = async (e) => {
-
-  e.preventDefault();
-
-  setLoading(true);
-
-  setError('');
-
-  setSuccessMessage('');
-
- 
-
-  const user = auth.currentUser;
-
-
-
-  if (!user || twoFATimer === 0) {
-
-    setError('The verification code has expired or the session is invalid. Please log in again.');
-
-    setIs2FAEnabled(false);
-
-    setLoading(false);
-
-    if (user) {
-
-      // Ensure the flag is cleared if session fails
-
+  const handleProfileInputChange = (e) => {
+    setProfileData({ ...profileData, [e.target.name]: e.target.value });
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    if (failedAttempts >= MAX_ATTEMPTS) {
+      setError(`Account locked. Please wait 30 seconds.`);
+      return;
+    }
+    setLoading(true);
+    setError('');
+    
+    try {
+      const cred = await signInWithEmailAndPassword(auth, formData.loginEmail, formData.loginPassword);
+      const user = cred.user;
+
+      if (!user.emailVerified) {
+        await signOut(auth);
+        setError('Please verify your email address first.');
+        setLoading(false);
+        return;
+      }
+
+      // Start 2FA
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const templateParams = { to_email: user.email, to_name: user.displayName || "User", code: code };
+      
+      // Replace with your actual service ID and Template ID
+      await emailjs.send("service_vg58qh8", "template_av0qj19", templateParams, "6XU-uQ7Og0d4oAykV");
+
+      await setDoc(doc(db, 'users', user.uid), { is2FAPending: true }, { merge: true });
+      setExpected2FACode(code);
+      setIs2FAEnabled(true);
+      setTwoFATimer(120);
+      setSuccessMessage(`Code sent to ${user.email}`);
+      setFormData(prev => ({ ...prev, loginPassword: '' }));
+
+    } catch (err) {
+      console.error(err);
+      if (err.code === 'auth/invalid-credential') {
+        setFailedAttempts(prev => prev + 1);
+        setError('Invalid credentials.');
+      } else {
+        setError('Login failed. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerify2FACode = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    const user = auth.currentUser;
+
+    if (twoFACode === expected2FACode && user) {
       await setDoc(doc(db, 'users', user.uid), { is2FAPending: false }, { merge: true });
-
-      signOut(auth);
-
-    }
-
-    return;
-
-  }
-
- 
-
-  // ----------------------------------------------------------------------------------
-
-  // ❗ CRITICAL SECURITY STEP: In a real app, this verification should call a backend
-
-  // function to check the code securely against the stored code and expiration time.
-
-  // The client-side check below is for development only.
-
-  // ----------------------------------------------------------------------------------
-
-
-
-  if (twoFACode === expected2FACode) { // Replace this with a secure Cloud Function call
-
-   
-
-    // ⭐ CRITICAL STEP 2: Clear the 2FA pending flag in Firestore
-
-    await setDoc(doc(db, 'users', user.uid), {
-
-      is2FAPending: false,
-
-    }, { merge: true });
-
-
-
-    // --- FINAL LOGIN SUCCESS ---
-
-    setFailedAttempts(0);
-
-    setFormData({ ...formData, loginEmail: '', loginPassword: '' });
-
-   
-
-    // Check Profile Completion (Now that 2FA is passed)
-
-    const userDocRef = doc(db, 'users', user.uid);
-
-    const userDoc = await getDoc(userDocRef);
-
-
-
-    if (userDoc.exists() && userDoc.data().profileCompleted === false) {
-
-      // Profile Incomplete: Proceed to setup
-
-      setShowProfileSetup(true);
-
-      setIs2FAEnabled(false);
-
-      setSuccessMessage('Welcome! Please complete your employee profile to access the dashboard.');
-
+      
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (userDoc.exists() && !userDoc.data().profileCompleted) {
+        setShowProfileSetup(true);
+        setIs2FAEnabled(false);
+      } else {
+        setSuccessMessage('Login successful!');
+        setIs2FAEnabled(false);
+      }
     } else {
-
-      // Fully Logged In: App.jsx will detect is2FAPending: false and profileCompleted: true, then redirect.
-
-      setSuccessMessage('Login successful! Redirecting...');
-
-      setIs2FAEnabled(false);
-
+      setError('Invalid code.');
     }
+    setLoading(false);
+  };
 
-   
+  const handleSignUp = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    if (formData.signupPassword !== formData.signupConfirmPassword) {
+      setError("Passwords don't match."); setLoading(false); return;
+    }
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, formData.signupEmail, formData.signupPassword);
+      await updateProfile(cred.user, { displayName: formData.signupFullName });
+      await sendEmailVerification(cred.user);
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        fullName: formData.signupFullName, email: formData.signupEmail, username: formData.signupUsername,
+        createdAt: new Date(), role: 'user', profileCompleted: false, emailVerified: false, is2FAPending: false
+      });
+      await signOut(auth);
+      setSuccessMessage('Account created! Please verify your email.');
+      setIsRightPanelActive(false);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  } else {
+  const handlePasswordReset = async () => {
+    const email = formData.loginEmail;
+    if (!email) {
+      setError('Please enter your email address in the field above to reset your password.');
+      setSuccessMessage('');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setSuccessMessage(`Password reset link successfully sent to ${email}.`);
+      setFormData({ ...formData, loginEmail: '' });
+    } catch (error) {
+      if (error.code === 'auth/user-not-found') setError('No account found with that email address.');
+      else if (error.code === 'auth/invalid-email') setError('Please enter a valid email address.');
+      else setError(`Failed to send reset link: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    setError('Invalid 2FA code. Please check your email and try again.');
+  const handleSaveProfile = async () => {
+    setLoading(true);
+    try {
+      const user = auth.currentUser;
+      await setDoc(doc(db, 'users', user.uid), { ...profileData, profileCompleted: true, is2FAPending: false }, { merge: true });
+      setSuccessMessage('Profile saved! Redirecting...');
+    } catch (err) {
+      setError('Failed to save profile.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    // Optionally increment a 2FA-specific failed attempt count here
+  // Profile Steps Render
+  const renderProfileStep = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <div className="profile-input-group">
+            <h2 style={{fontSize: '20px', marginBottom: '20px', color: 'var(--dark-blue)', fontWeight: '700'}}>Employee Info (1/3)</h2>
+            <input type="text" name="fullName" value={profileData.fullName} onChange={handleProfileInputChange} placeholder="Full Name" required />
+            <input type="text" name="position" value={profileData.position} onChange={handleProfileInputChange} placeholder="Position / Job Title" required />
+            <input type="text" name="department" value={profileData.department} onChange={handleProfileInputChange} placeholder="Department" required />
+          </div>
+        );
+      case 2:
+        return (
+          <div className="profile-input-group">
+            <h2 style={{fontSize: '20px', marginBottom: '20px', color: 'var(--dark-blue)', fontWeight: '700'}}>Contact Info (2/3)</h2>
+            <select name="branch" value={profileData.branch} onChange={handleProfileInputChange} required>
+              <option value="" disabled>Select Branch</option>
+              {branches.map(b => <option key={b} value={b}>{b}</option>)}
+            </select>
+            <input type="email" name="email" value={profileData.email} disabled />
+            <input type="tel" name="phone" value={profileData.phone} onChange={handleProfileInputChange} placeholder="Phone Number" required />
+          </div>
+        );
+      case 3:
+        return (
+          <div className="profile-input-group">
+            <h2 style={{fontSize: '20px', marginBottom: '20px', color: 'var(--dark-blue)', fontWeight: '700'}}>Review Details (3/3)</h2>
+            <div className="profile-review">
+              <div className="review-item"><strong>Name:</strong> <span>{profileData.fullName}</span></div>
+              <div className="review-item"><strong>Pos:</strong> <span>{profileData.position}</span></div>
+              <div className="review-item"><strong>Dept:</strong> <span>{profileData.department}</span></div>
+              <div className="review-item"><strong>Branch:</strong> <span>{profileData.branch}</span></div>
+              <div className="review-item"><strong>Phone:</strong> <span>{profileData.phone}</span></div>
+            </div>
+          </div>
+        );
+      default: return null;
+    }
+  };
 
-  }
+  return (
+    <div className="login-page-wrapper">
+      <style>{styles}</style>
+      <div className={`container ${isRightPanelActive ? 'right-panel-active' : ''} ${showProfileSetup ? 'profile-setup-active' : ''}`}>
+        
+        {/* --- SIGN IN FORM --- */}
+        {!showProfileSetup && (
+          <div className="form-container sign-in-container">
+            <form onSubmit={is2FAEnabled ? handleVerify2FACode : handleLogin}>
+              <img src={logo} alt="Logo" className="logo" />
+              <h1>{is2FAEnabled ? 'Verify' : 'Welcome Back'}</h1>
+              <p>{is2FAEnabled ? 'Enter code sent to email' : 'Sign in to your dashboard'}</p>
+              
+              {error && <div className="error-message">{error}</div>}
+              {successMessage && <div className="success-message">{successMessage}</div>}
 
+              {!is2FAEnabled ? (
+                <>
+                  <input type="email" name="loginEmail" placeholder="Email" value={formData.loginEmail} onChange={handleInputChange} required />
+                  <div className="password-input-wrapper">
+                    <input type={showLoginPassword ? "text" : "password"} name="loginPassword" placeholder="Password" value={formData.loginPassword} onChange={handleInputChange} required />
+                    <span className="password-toggle" onClick={() => setShowLoginPassword(!showLoginPassword)}>{showLoginPassword ? <EyeIcon/> : <EyeSlashIcon/>}</span>
+                  </div>
+                  <button type="button" onClick={handlePasswordReset} className="ghost-text-button">Forgot Password?</button>
+                  <button type="submit" disabled={loading}>{loading ? 'Loading...' : 'Login'}</button>
+                  <span className="mobile-toggle" onClick={() => setIsRightPanelActive(true)}>Create Account</span>
+                </>
+              ) : (
+                <>
+                  <input type="text" value={twoFACode} onChange={(e) => setTwoFACode(e.target.value)} placeholder="6-Digit Code" maxLength="6" required />
+                  <button type="submit" disabled={loading}>Verify</button>
+                  <button type="button" className="ghost-text-button" onClick={() => setIs2FAEnabled(false)}>Cancel</button>
+                </>
+              )}
+            </form>
+          </div>
+        )}
 
+        {/* --- SIGN UP FORM --- */}
+        {!showProfileSetup && (
+          <div className="form-container sign-up-container">
+            <form onSubmit={handleSignUp}>
+              <h1>Create Account</h1>
+              <p>Join SM CRM today</p>
+              {error && isRightPanelActive && <div className="error-message">{error}</div>}
+              
+              <input type="text" name="signupFullName" placeholder="Full Name" value={formData.signupFullName} onChange={handleInputChange} required />
+              <input type="email" name="signupEmail" placeholder="Email" value={formData.signupEmail} onChange={handleInputChange} required />
+              <input type="text" name="signupUsername" placeholder="Username" value={formData.signupUsername} onChange={handleInputChange} required />
+              
+              <div className="password-input-wrapper">
+                <input type={showSignupPassword ? "text" : "password"} name="signupPassword" placeholder="Password" value={formData.signupPassword} onChange={handleInputChange} required />
+                <span className="password-toggle" onClick={() => setShowSignupPassword(!showSignupPassword)}>{showSignupPassword ? <EyeIcon/> : <EyeSlashIcon/>}</span>
+              </div>
+              <div className="password-input-wrapper">
+                <input type={showSignupConfirmPassword ? "text" : "password"} name="signupConfirmPassword" placeholder="Confirm Password" value={formData.signupConfirmPassword} onChange={handleInputChange} required />
+                <span className="password-toggle" onClick={() => setShowSignupConfirmPassword(!showSignupConfirmPassword)}>{showSignupConfirmPassword ? <EyeIcon/> : <EyeSlashIcon/>}</span>
+              </div>
 
-  setLoading(false);
+              <button type="submit" disabled={loading}>{loading ? 'Creating...' : 'Sign Up'}</button>
+              <span className="mobile-toggle" onClick={() => setIsRightPanelActive(false)}>Login Instead</span>
+            </form>
+          </div>
+        )}
 
+        {/* --- PROFILE SETUP FORM --- */}
+        <div className="profile-setup-container">
+          <form>
+            <img src={logo} alt="Logo" className="logo" style={{width:'70px', height:'70px', marginBottom:'15px'}} />
+            <h1 style={{fontSize:'24px', marginBottom:'15px'}}>Setup Profile</h1>
+            <div className="profile-setup-steps">
+              <div className={`step ${currentStep >= 1 ? 'active' : ''}`}>1</div>
+              <div className={`step ${currentStep >= 2 ? 'active' : ''}`}>2</div>
+              <div className={`step ${currentStep >= 3 ? 'active' : ''}`}>3</div>
+            </div>
+
+            {error && <div className="error-message">{error}</div>}
+            
+            {renderProfileStep()}
+
+            <div className="form-navigation">
+              {currentStep === 1 && <button type="button" className="btn-back" onClick={() => {auth.signOut(); setShowProfileSetup(false);}}>Log Out</button>}
+              {currentStep > 1 && <button type="button" className="btn-back" onClick={() => setCurrentStep(prev => prev - 1)}>Back</button>}
+              
+              {currentStep < 3 ? (
+                <button type="button" onClick={() => setCurrentStep(prev => prev + 1)}>Next</button>
+              ) : (
+                <button type="button" className="btn-complete" onClick={handleSaveProfile} disabled={loading}>{loading ? 'Saving...' : 'Complete'}</button>
+              )}
+            </div>
+          </form>
+        </div>
+
+        {/* --- OVERLAY --- */}
+        {!showProfileSetup && (
+          <div className="overlay-container">
+            <div className="overlay">
+              <div className="overlay-panel overlay-left">
+                <h1>Welcome Back!</h1>
+                <p>To keep connected with us please login with your personal info</p>
+                <button className="ghost" onClick={() => setIsRightPanelActive(false)}>Sign In</button>
+              </div>
+              <div className="overlay-panel overlay-right">
+                <h1>Hello, Friend!</h1>
+                <p>Enter your personal details and start journey with us</p>
+                <button className="ghost" onClick={() => setIsRightPanelActive(true)}>Sign Up</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
 };
-
-
-
-// --- 4. Handle Password Reset ---
-
-const handlePasswordReset = async () => {
-
-const email = formData.loginEmail;
-
-
-
-if (!email) {
-
-setError('Please enter your email address in the field above to reset your password.');
-
-setSuccessMessage('');
-
-return;
-
-}
-
-
-
-setLoading(true);
-
-setError('');
-
-setSuccessMessage('');
-
-
-
-try {
-
-await sendPasswordResetEmail(auth, email);
-
-setSuccessMessage(`Password reset link successfully sent to ${email}. Please check your inbox (and spam folder).`);
-
-
-
-setFormData({ ...formData, loginEmail: '' });
-
-
-
-} catch (error) {
-
-console.error('Error sending password reset email:', error);
-
-if (error.code === 'auth/user-not-found') {
-
- setError('No account found with that email address.');
-
-} else if (error.code === 'auth/invalid-email') {
-
- setError('Please enter a valid email address.');
-
-} else {
-
- setError(`Failed to send reset link: ${error.message}`);
-
-}
-
-} finally {
-
-setLoading(false);
-
-}
-
-};
-
-
-
-// --- 5. Handle Profile Setup ---
-
-const handleSaveProfile = async () => {
-
-setLoading(true);
-
-setError('');
-
- setSuccessMessage('');
-
-
-
- // Final Validation Check
-
- if (!profileData.fullName || !profileData.position || !profileData.department || !profileData.branch || !profileData.phone) {
-
-  setError('Please ensure all profile fields are filled out.');
-
-  setLoading(false);
-
-  return;
-
- }
-
-
-
-try {
-
-const user = auth.currentUser;
-
-
-
-if (user) {
-
- // Update Firestore document, setting profileCompleted to true
-
- await setDoc(doc(db, 'users', user.uid), {
-
- fullName: profileData.fullName,
-
- email: profileData.email,
-
- position: profileData.position,
-
- department: profileData.department,
-
- branch: profileData.branch,
-
- phone: profileData.phone,
-
- profileCompleted: true,
-
- emailVerified: user.emailVerified,
-
- is2FAPending: false, // Ensure this is false on final setup completion
-
- updatedAt: new Date()
-
- }, { merge: true }); // Use merge to retain initial fields
-
-
-
- console.log('Profile completed successfully - App.jsx will detect the change and redirect');
-
- 
-
- setSuccessMessage('Profile completed successfully! Redirecting...');
-
- 
-
-}
-
-} catch (error) {
-
-console.error('Error saving profile:', error);
-
-setError('Failed to save profile. Please try again.');
-
-} finally {
-
-setLoading(false);
-
-}
-
-};
-
-
-
-const nextStep = () => {
-
-setError('');
-
- setSuccessMessage('');
-
-
-
-// Basic validation before moving to the next step
-
-if (currentStep === 1) {
-
-if (!profileData.fullName || !profileData.position || !profileData.department) {
-
- setError('Please fill in all employee information fields before proceeding.');
-
- return;
-
-}
-
-} else if (currentStep === 2) {
-
-if (!profileData.branch || !profileData.phone || !profileData.email) {
-
- setError('Please fill in all contact information fields before proceeding.');
-
- return;
-
-}
-
-}
-
-setCurrentStep(prev => prev + 1);
-
-};
-
-
-
-const prevStep = () => {
-
-setCurrentStep(prev => prev - 1);
-
-setError('');
-
- setSuccessMessage('Welcome! Please complete your employee profile to access the dashboard.'); // Restore welcome message
-
-};
-
-
-
-const handleSignUpClick = () => {
-
-setIsRightPanelActive(true);
-
-setError('');
-
-setShowProfileSetup(false);
-
-setSuccessMessage('');
-
-setCurrentStep(1);
-
-setIs2FAEnabled(false); // Reset 2FA state
-
-};
-
-
-
-const handleSignInClick = () => {
-
-setIsRightPanelActive(false);
-
-setError('');
-
-setShowProfileSetup(false);
-
-setSuccessMessage('');
-
-setIs2FAEnabled(false); // Reset 2FA state
-
-// Ensure failed attempts error message is cleared when switching views
-
-if (failedAttempts >= MAX_ATTEMPTS) setFailedAttempts(0);
-
-};
-
-
-
-const backToLogin = async () => {
-
-// Ensures the user is signed out if they navigate away from setup or 2FA
-
-if (auth.currentUser) {
-
-  // ⭐ CRITICAL: Clear the is2FAPending flag when canceling login
-
-  await setDoc(doc(db, 'users', auth.currentUser.uid), { is2FAPending: false }, { merge: true });
-
- auth.signOut();
-
-}
-
-setShowProfileSetup(false);
-
-setCurrentStep(1);
-
-setError('');
-
-setSuccessMessage('');
-
-setIs2FAEnabled(false);
-
-};
-
-
-
-// Profile Setup Steps
-
-const renderProfileStep = () => {
-
-switch (currentStep) {
-
-case 1:
-
- return (
-
- <div className="profile-step active">
-
- <h2>Employee Information (1/3)</h2>
-
- 
-
- <input type="text" id="fullName" name="fullName" value={profileData.fullName} onChange={handleProfileInputChange} placeholder="Full Name" required />
-
- <input type="text" id="position" name="position" value={profileData.position} onChange={handleProfileInputChange} placeholder="Position / Job Title" required />
-
- <input type="text" id="department" name="department" value={profileData.department} onChange={handleProfileInputChange} placeholder="Department" required />
-
- </div>
-
- );
-
-
-
-case 2:
-
- return (
-
- <div className="profile-step active">
-
- <h2>Contact Information (2/3)</h2>
-
- 
-
- <select id="branch" name="branch" value={profileData.branch} onChange={handleProfileInputChange} required>
-
- <option value="" disabled>Select your Branch</option>
-
- {branches.map(branch => (
-
-  <option key={branch} value={branch}>{branch}</option>
-
- ))}
-
- </select>
-
- 
-
- <input type="email" id="email" name="email" value={profileData.email} onChange={handleProfileInputChange} placeholder="Email (Pre-filled)" required disabled />
-
- 
-
- <input type="tel" id="phone" name="phone" value={profileData.phone} onChange={handleProfileInputChange} placeholder="Phone Number (e.g., 09XX-XXX-XXXX)" required />
-
- </div>
-
- );
-
-
-
-case 3:
-
- return (
-
- <div className="profile-step active">
-
- <h2>Review & Complete (3/3)</h2>
-
- <div className="profile-review">
-
-    <h3>Please Verify Your Details</h3>
-
- <div className="review-item"><strong>Full Name:</strong> <span>{profileData.fullName}</span></div>
-
- <div className="review-item"><strong>Position:</strong> <span>{profileData.position}</span></div>
-
- <div className="review-item"><strong>Department:</strong> <span>{profileData.department}</span></div>
-
- <div className="review-item"><strong>Branch:</strong> <span>{profileData.branch || 'N/A'}</span></div>
-
- <div className="review-item"><strong>Email:</strong> <span>{profileData.email}</span></div>
-
- <div className="review-item"><strong>Phone:</strong> <span>{profileData.phone}</span></div>
-
- </div>
-
- </div>
-
- );
-
-
-
-default:
-
- return null;
-
-}
-
-};
-
-
-
-const isLockedOut = failedAttempts >= MAX_ATTEMPTS;
-
-
-
-return (
-
-<div className={`login-container ${isRightPanelActive ? 'right-panel-active' : ''} ${showProfileSetup ? 'profile-setup-active' : ''}`}>
-
-<div className={`container ${isRightPanelActive ? 'right-panel-active' : ''} ${showProfileSetup ? 'profile-setup-active' : ''}`} id="container">
-
- 
-
- {/* Sign In Form (Now handles 2FA too) */}
-
- {!showProfileSetup && (
-
- <div className="form-container sign-in-container">
-
- <form onSubmit={is2FAEnabled ? handleVerify2FACode : handleLogin}>
-
- <img src={logo} alt="Logo" className="logo" />
-
- <h1>{is2FAEnabled ? 'Two-Factor Verification' : 'Welcome Back'}</h1>
-
- <p>{is2FAEnabled ? 'Enter the 6-digit code sent to your verified email.' : 'Sign in to your SM CRM dashboard'}</p>
-
- 
-
- {/* Display error/success messages */}
-
- {error && !isRightPanelActive && <div className="error-message">{error}</div>}
-
- {successMessage && !isRightPanelActive && <div className="success-message">{successMessage}</div>}
-
- 
-
- {!is2FAEnabled ? (
-
-   <>
-
-   {/* 1. Login Email Input */}
-
-   <input
-
-   type="email"
-
-   name="loginEmail"
-
-   placeholder="Email"
-
-   required
-
-   value={formData.loginEmail}
-
-   onChange={handleInputChange}
-
-   disabled={loading || isLockedOut}
-
-   />
-
-     
-
-   {/* 2. Login Password Input with ICON Toggle */}
-
-   <div className="password-input-wrapper">
-
-    <input
-
-    type={showLoginPassword ? 'text' : 'password'}
-
-    name="loginPassword"
-
-    placeholder="Password"
-
-    required
-
-    value={formData.loginPassword}
-
-    onChange={handleInputChange}
-
-    disabled={loading || isLockedOut}
-
-   />
-
-    <span
-
-    className="password-toggle icon-toggle"
-
-    onClick={toggleLoginPasswordVisibility}
-
-    aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
-
-    >
-
-    {showLoginPassword ? <EyeIcon /> : <EyeSlashIcon />}
-
-    </span>
-
-   </div>
-
-
-
-   <button
-
-   type="button"
-
-   onClick={handlePasswordReset}
-
-   className="ghost-text-button"
-
-   disabled={loading || isLockedOut}
-
-   >
-
-   Forgot your password?
-
-   </button>
-
-   
-
-   <button
-
-   type="submit"
-
-   disabled={loading || isLockedOut}
-
-   >
-
-   {loading ? 'Validating...' : isLockedOut ? 'Locked Out' : 'Login'}
-
-   </button>
-
-   </>
-
- ) : (
-
-   <>
-
-   {/* 2FA Code Input */}
-
-   <input
-
-   type="text"
-
-   name="twoFACode"
-
-   placeholder="6-Digit Code"
-
-   required
-
-   value={twoFACode}
-
-   onChange={(e) => setTwoFACode(e.target.value)}
-
-   maxLength="6"
-
-   disabled={loading}
-
-   />
-
-   
-
-   {twoFATimer > 0 && (
-
-   <p className="timer-text">Code expires in: **{twoFATimer}s**</p>
-
-   )}
-
-   
-
-   <button type="submit" disabled={loading}>
-
-   {loading ? 'Verifying...' : 'Verify Code & Access'}
-
-   </button>
-
-   <button
-
-   type="button"
-
-   onClick={backToLogin}
-
-   className="ghost-text-button"
-
-   disabled={loading}
-
-   >
-
-   Cancel Login
-
-   </button>
-
-   </>
-
- )}
-
-
-
- </form>
-
- </div>
-
- )}
-
-
-
- {/* Sign Up Form */}
-
- {!showProfileSetup && (
-
- <div className="form-container sign-up-container">
-
- <form onSubmit={handleSignUp}>
-
- <img src={logo} alt="Logo" className="logo" />
-
- <h1>Create Account</h1>
-
- <p>Join SM CRM and manage your customers effectively</p>
-
- 
-
- {error && isRightPanelActive && <div className="error-message">{error}</div>}
-
- {successMessage && isRightPanelActive && <div className="success-message">{successMessage}</div>}
-
- 
-
- <input type="text" name="signupFullName" placeholder="Full Name" required value={formData.signupFullName} onChange={handleInputChange} disabled={loading} />
-
- <input type="email" name="signupEmail" placeholder="Email" required value={formData.signupEmail} onChange={handleInputChange} disabled={loading} />
-
- <input type="text" name="signupUsername" placeholder="Username" required value={formData.signupUsername} onChange={handleInputChange} disabled={loading} />
-
-
-
-   {/* 1. Signup Password Input with ICON Toggle */}
-
-   <div className="password-input-wrapper">
-
-  <label htmlFor="signupPassword" style={{ display: 'block', marginBottom: '4px', color: '#dd1515ff', fontSize: '12px', textAlign: 'left'}}>(8+ chars, Uppercase, Lowercase, Number, Special Char)</label>
-
-  <input
-
-  type={showSignupPassword ? 'text' : 'password'}
-
-  name="signupPassword"
-
-  placeholder="Password"
-
-  required
-
-  value={formData.signupPassword}
-
-  onChange={handleInputChange}
-
-  disabled={loading}
-
-  />
-
-    <span
-
-    className="password-toggle icon-toggle"
-
-    onClick={toggleSignupPasswordVisibility}
-
-    aria-label={showSignupPassword ? 'Hide password' : 'Show password'}
-
-    >
-
-    {showSignupPassword ? <EyeIcon /> : <EyeSlashIcon />}
-
-    </span>
-
-   </div>
-
-   {/* End 1. Signup Password Input with ICON Toggle */}
-
-
-
-   {/* 2. Confirm Password Input with ICON Toggle (NEW) */}
-
-   <div className="password-input-wrapper">
-
-  <input
-
-  type={showSignupConfirmPassword ? 'text' : 'password'}
-
-  name="signupConfirmPassword"
-
-  placeholder="Confirm Password"
-
-  required
-
-  value={formData.signupConfirmPassword}
-
-  onChange={handleInputChange}
-
-  disabled={loading}
-
-  />
-
-    <span
-
-    className="password-toggle icon-toggle"
-
-    onClick={toggleSignupConfirmPasswordVisibility}
-
-    aria-label={showSignupConfirmPassword ? 'Hide confirmation password' : 'Show confirmation password'}
-
-    >
-
-    {showSignupConfirmPassword ? <EyeIcon /> : <EyeSlashIcon />}
-
-    </span>
-
-   </div>
-
-   {/* End 2. Confirm Password Input with ICON Toggle */}
-
-
-
- <button type="submit" disabled={loading}>
-
-  {loading ? 'Creating Account...' : 'Sign Up'}
-
- </button>
-
- </form>
-
- </div>
-
- )}
-
-
-
-
-
- {/* Profile Setup Form */}
-
- {showProfileSetup && (
-
- <div className="form-container profile-setup-container">
-
- <form id="profileSetupForm">
-
- <img src={logo} alt="Logo" className="logo" />
-
- <h1>Complete Your Profile</h1>
-
- <p>Enter your employee information to finalize setup</p>
-
- 
-
- {/* Step Indicator */}
-
- <div className="profile-setup-steps">
-
-  <div className={`step ${currentStep >= 1 ? 'active' : ''}`}>1</div>
-
-  <div className={`step ${currentStep >= 2 ? 'active' : ''}`}>2</div>
-
-  <div className={`step ${currentStep >= 3 ? 'active' : ''}`}>3</div>
-
- </div>
-
- 
-
- {/* Centralized Messaging for Profile Setup */}
-
- {error && <div className="error-message">{error}</div>}
-
- {successMessage && !loading && <div className="success-message">{successMessage}</div>}
-
-
-
- {renderProfileStep()}
-
-
-
- <div className="form-navigation">
-
-  {/* Back to Login button always visible on step 1 */}
-
-  {currentStep === 1 && (
-
-  <button type="button" className="btn-back" onClick={backToLogin} disabled={loading}>
-
-  Cancel & Back to Login
-
-  </button>
-
-  )}
-
-  {/* Back button only visible on steps 2 and 3 */}
-
-  {currentStep > 1 && currentStep < 4 && (
-
-  <button type="button" className="btn-back" onClick={prevStep} disabled={loading}>
-
-  Back
-
-  </button>
-
-  )}
-
- 
-
-  {currentStep < 3 ? (
-
-  <button type="button" className="btn-next" onClick={nextStep} disabled={loading}>
-
-  {loading ? 'Validating...' : 'Next'}
-
-  </button>
-
-  ) : (
-
-  <button
-
-  type="button"
-
-  className="btn-complete"
-
-  onClick={handleSaveProfile}
-
-  disabled={loading}
-
-  >
-
-  {loading ? 'Completing...' : 'Complete Setup'}
-
-  </button>
-
-  )}
-
- </div>
-
- 
-
- <div style={{ height: '40px' }} /> {/* Placeholder for final margin/spacing */}
-
- </form>
-
- </div>
-
- )}
-
-
-
-
-
- {/* Overlay - Hide when profile setup is shown */}
-
- {!showProfileSetup && (
-
- <div className="overlay-container">
-
- <div className="overlay">
-
- <div className="overlay-panel overlay-left">
-
-  <h1>Welcome Back!</h1>
-
-  <p>Already have an account? Sign in to continue.</p>
-
-  <button className="ghost" onClick={handleSignInClick}>Login</button>
-
- </div>
-
- <div className="overlay-panel overlay-right">
-
-  <h1>New Here?</h1>
-
-  <p>Don't have an account? Create one to get started.</p>
-
-  <button className="ghost" onClick={handleSignUpClick}>Sign Up</button>
-
- </div>
-
- </div>
-
- </div>
-
- )}
-
-</div>
-
-</div>
-
-);
-
-};
-
-
 
 export default Login;

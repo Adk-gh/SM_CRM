@@ -319,19 +319,7 @@ const Settings = () => {
       title: 'User Roles & Permissions',
       component: <RolesSection state={state} dispatch={dispatch} updateUserRole={updateUserRole} />
     },
-    integration: {
-        icon: 'fa-plug',
-        title: 'System Integration',
-        component: (
-            <div className="content-card">
-              <div className="card-header"><div className="card-icon"><i className="fas fa-plug"></i></div><h3 className="card-title">System Integration</h3></div>
-              <div className="form-group"><label className="form-label">POS API Key</label><input type="text" placeholder="Enter POS API key" /></div>
-              <div className="form-group"><label className="form-label">HRMIS API Key</label><input type="text" placeholder="Enter HRMIS API key" /></div>
-              <div className="form-group"><label className="form-label">Inventory URL</label><input type="text" placeholder="https://inventory.example.com" /></div>
-              <button className="btn btn-block">Save Integration</button>
-            </div>
-        )
-    },
+
     security: {
         icon: 'fa-shield-alt',
         title: 'Security Settings',
