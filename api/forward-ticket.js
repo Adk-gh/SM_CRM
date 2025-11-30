@@ -1,108 +1,137 @@
-// backend/api/forward-ticket.js
+const fetch = require('node-fetch');
+require('dotenv').config();
 
-// Ensure 'node-fetch' is installed if using Node < 18: npm install node-fetch
-const fetch = require('node-fetch'); 
-require('dotenv').config(); 
-
-// 1. Load Secrets from Environment Variables
-const POS_API_URL = process.env.POS_API_URL;
-const POS_API_KEY = process.env.POS_API_KEY;
-const INV_API_URL = process.env.INV_API_URL;
-const INV_API_KEY = process.env.INV_API_KEY;
-const ECOMM_API_URL = process.env.ECOMM_API_URL;
-const ECOMM_API_KEY = process.env.ECOMM_API_KEY;
+// Environment Variables
+const POS_FUNCTION_URL = "https://spobwqqaskuhcmyeklgk.supabase.co/functions/v1/ticket"; // Supabase Edge Function URL
+const INV_API_URL = process.env.INV_API_URL;           
+const INVENTORY_API_KEY = process.env.INVENTORY_API_KEY;
+const ONLINESHOPPING_API_URL = process.env.ONLINESHOPPING_API_URL;
+const ONLINESHOPPING_API_KEY = process.env.ONLINESHOPPING_API_KEY;
 
 /**
  * Helper function to securely call an external REST API.
- * @param {string} url - The external system's API URL.
- * @param {object} payload - The data to send.
- * @param {string} apiKey - The authorization key.
  */
-const forwardRequest = async (url, payload, apiKey) => {
-    if (!url || !apiKey) {
-        throw new Error('Missing URL or API Key configuration for the target system.');
-    }
-    
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`, 
-        },
-        body: JSON.stringify(payload),
-    });
+const forwardRequest = async (url, payload, apiKey, useXApiKey = false) => {
+  if (!url) throw new Error('Missing URL configuration for the target system.');
 
-    if (!response.ok) {
-        const errorDetails = await response.text();
-        throw new Error(`External API failed (${response.status} from ${url}): ${errorDetails}`);
-    }
+  const headers = { 'Content-Type': 'application/json' };
 
-    return response.json();
+  if (apiKey) {
+    if (useXApiKey) {
+      headers['X-API-Key'] = apiKey; // Inventory
+    } else {
+      headers['Authorization'] = `Bearer ${apiKey}`; // Online Shopping
+    }
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorDetails = await response.text();
+    throw new Error(`External API failed (${response.status} from ${url}): ${errorDetails}`);
+  }
+
+  return response.json();
 };
-
 
 // Main Serverless Handler
 module.exports = async (req, res) => {
-    // Basic Request Validation
-    if (req.method !== 'POST') {
-        return res.status(405).json({ message: 'Method Not Allowed' });
-    }
-    
-    // 2. Destructure Data and the CRITICAL Routing Field
-    const { ticketId, subject, description, requesterEmail, category, targetSystem } = req.body;
-    
-    if (!ticketId || !targetSystem) {
-        return res.status(400).json({ message: 'Missing required ticket ID or targetSystem selection.' });
-    }
-    
-    // Safety check: If agent chose 'none', terminate cleanly
-    if (targetSystem === 'none') {
-        return res.status(200).json({ message: 'Agent manually chose not to notify any system.', results: {} });
-    }
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method Not Allowed' });
+  }
 
-    const basePayload = { ticketId, subject, description, requesterEmail, issue_category: category };
-    const results = {};
+  const { ticketId, issueTitle, issueDescription, userEmail, issueCategory } = req.body;
 
-    try {
-        // 3. ROUTING LOGIC: Switch on the targetSystem code (pos, inventory, ecomm)
-        switch (targetSystem) {
-            case 'pos':
-                // POS System Integration
-                const posPayload = { ...basePayload, request_type: 'CUSTOMER_REFUND_ALERT' };
-                results.pos = await forwardRequest(POS_API_URL, posPayload, POS_API_KEY);
-                break;
+  if (!ticketId || !issueCategory) {
+    return res.status(400).json({ message: 'Missing required ticket ID or issueCategory.' });
+  }
 
-            case 'inventory':
-                // Inventory System Integration
-                const invPayload = { ...basePayload, task: 'VERIFY_STOCK' };
-                results.inventory = await forwardRequest(INV_API_URL, invPayload, INV_API_KEY);
-                break;
-                
-            case 'ecomm':
-                // E-commerce Platform Integration
-                const ecommPayload = { ...basePayload, severity: 'IMMEDIATE_ATTENTION' };
-                results.ecomm = await forwardRequest(ECOMM_API_URL, ecommPayload, ECOMM_API_KEY);
-                break;
+  const results = {};
 
-            default:
-                // If the targetSystem value is invalid/unmapped
-                return res.status(400).json({ message: `Invalid target system code provided: ${targetSystem}.` });
+  try {
+    switch (issueCategory.toLowerCase()) {
+      case 'billing':
+        // ✅ Forward to POS Supabase Edge Function with exact DB schema
+        const posPayload = {
+          ticketid: ticketId,
+          subject: issueTitle ?? null,
+          description: issueDescription ?? null,
+          issue_category: 'billing',
+          requesteremail: userEmail ?? null,
+          severity: 'IMMEDIATE_ATTENTION',
+          task: 'CUSTOMER_REFUND_ALERT'
+        };
+
+        const posResponse = await fetch(POS_FUNCTION_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(posPayload)
+        });
+
+        if (!posResponse.ok) {
+          const errorDetails = await posResponse.text();
+          throw new Error(`POS function failed (${posResponse.status}): ${errorDetails}`);
         }
 
-        // 4. Success Response
-        return res.status(200).json({ 
-            message: `Ticket successfully forwarded to: ${targetSystem}.`,
-            results: results
-        });
+        results.pos = await posResponse.json();
+        break;
 
-    } catch (e) {
-        // Log the specific failure details
-        console.error('API Forwarding Execution Error:', e.message);
-        
-        // Return a 500 error indicating the external API call failed
-        return res.status(500).json({ 
-            message: `Forwarding failed during API call to ${targetSystem}.`,
-            error: e.message
-        });
+      case 'access':
+        // ✅ Forward to Online Shopping
+        const osPayload = {
+          ticketId,
+          subject: issueTitle,
+          description: issueDescription,
+          requesterEmail: userEmail,
+          issue_category: 'access',
+          severity: 'IMMEDIATE_ATTENTION'
+        };
+
+        results.onlineshopping = await forwardRequest(
+          ONLINESHOPPING_API_URL,
+          osPayload,
+          ONLINESHOPPING_API_KEY
+        );
+        break;
+
+      case 'stock_issue':
+        // ✅ Forward to Inventory
+        const invPayload = {
+          ticketId,
+          subject: issueTitle,
+          description: issueDescription,
+          requesterEmail: userEmail,
+          issue_category: 'itemnotfound',
+          severity: 'IMMEDIATE_ATTENTION',
+          task: 'VERIFY_STOCK'
+        };
+
+        results.inventory = await forwardRequest(
+          `${INV_API_URL}/${ticketId}`,
+          invPayload,
+          INVENTORY_API_KEY,
+          true
+        );
+        break;
+
+      default:
+        return res.status(400).json({ message: `Unsupported issueCategory: ${issueCategory}.` });
     }
+
+    return res.status(200).json({
+      message: `Ticket successfully forwarded based on category: ${issueCategory}.`,
+      results
+    });
+
+  } catch (e) {
+    console.error('API Forwarding Execution Error:', e.message);
+    return res.status(500).json({
+      message: `Forwarding failed during API call for category: ${issueCategory}.`,
+      error: e.message
+    });
+  }
 };

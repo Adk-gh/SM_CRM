@@ -24,13 +24,15 @@ const SM_BRANCHES = [
 ].sort((a, b) => a.label.localeCompare(b.label));
 
 const ISSUE_CATEGORIES = [
- { value: 'technical', label: 'Technical Issue', icon: '💻' },
- { value: 'billing', label: 'Billing & Payments', icon: '💳' },
- { value: 'access', label: 'Account Access', icon: '🔐' },
- { value: 'feature', label: 'Feature Request', icon: '✨' },
- { value: 'bug', label: 'Report a Bug', icon: '🐛' },
- { value: 'general', label: 'General Inquiry', icon: '❓' }
+  { value: 'technical', label: 'Technical Issue', icon: '💻' },
+  { value: 'billing', label: 'Billing & Payments', icon: '💳' },
+  { value: 'access', label: 'Account Access', icon: '🔐' },
+  { value: 'stock_issue', label: 'Inventory Stock Issue', icon: '📦' },
+  { value: 'feature', label: 'Feature Request', icon: '✨' },
+  { value: 'bug', label: 'Report a Bug', icon: '🐛' },
+  { value: 'general', label: 'General Inquiry', icon: '❓' }
 ];
+
 
 const SupportTicketSubmit = () => {
  const fileInputRef = useRef(null);

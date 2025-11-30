@@ -1,0 +1,87 @@
+// sm-crm-app/api/reviews.js
+const fetch = require('node-fetch');
+const admin = require('firebase-admin');
+
+// --- Firebase Admin SDK Initialization for CRM DB ---
+if (!admin.apps.length) {
+  try {
+    const serviceAccountJson = process.env.CRM_FIREBASE_CREDENTIALS;
+    if (!serviceAccountJson) {
+      throw new Error("CRM_FIREBASE_CREDENTIALS environment variable is not set.");
+    }
+    const serviceAccount = JSON.parse(serviceAccountJson);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+  } catch (error) {
+    console.error("CRM Firebase Initialization Error:", error.message);
+    throw new Error("Server initialization failed.");
+  }
+}
+
+const db = admin.firestore();
+
+module.exports = async (req, res) => {
+  // -------------------------------------------------------------------
+  // 🔑 START CORS FIX
+  // -------------------------------------------------------------------
+  
+  // 1. Set the specific allowed origin (your Vite dev server)
+  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
+  
+  // 2. Set the allowed methods
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  
+  // 3. Set the allowed request headers
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle preflight requests (OPTIONS method)
+  if (req.method === 'OPTIONS') {
+    // Browser checks permissions, send back OK status
+    return res.status(200).end();
+  }
+  // -------------------------------------------------------------------
+  // 🔑 END CORS FIX
+  // -------------------------------------------------------------------
+
+  if (req.method !== 'GET') {
+    return res.status(405).json({ message: 'Method Not Allowed' });
+  }
+
+  try {
+    const targetEmail = req.query.email;
+
+    // 🔎 Call Shopping API for reviews
+    const response = await fetch(
+      targetEmail
+        ? `${process.env.SHOPPING_API_URLS}?email=${encodeURIComponent(targetEmail)}`
+        : `${process.env.SHOPPING_API_URLS}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.CRM_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (!response.ok) {
+      const errorDetails = await response.text();
+      throw new Error(`Shopping API failed (${response.status}): ${errorDetails}`);
+    }
+
+    const data = await response.json();
+
+    // 💾 Save to CRM DB (reviews collection)
+    for (const review of data.reviews) {
+      const docId = review.id || `${review.userId}_${Date.now()}`;
+      await db.collection('reviews').doc(docId).set(review, { merge: true });
+    }
+
+    // ✅ Return to frontend
+    return res.status(200).json(data);
+
+  } catch (err) {
+    console.error("CRM → Shopping API (reviews) error:", err.message);
+    return res.status(500).json({ message: "Failed to fetch reviews", error: err.message });
+  }
+};

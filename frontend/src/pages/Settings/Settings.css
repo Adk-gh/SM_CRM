@@ -89,7 +89,70 @@ body {
   position: sticky;
   top: 40px;
 }
+/* Existing styles */
 
+/* --- User Item Component styles --- */
+.user-item {
+    /* ... existing styles ... */
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--card-bg);
+}
+
+.user-info {
+    flex-grow: 1;
+}
+
+.user-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.role-select {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: var(--input-bg);
+    color: var(--text-color);
+    cursor: pointer;
+    min-width: 120px;
+}
+
+/* New Archive Button Styles */
+.btn-archive {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    background-color: var(--danger-color); /* Use a warning/danger color */
+    color: white;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 600;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-archive:hover:not(:disabled) {
+    background-color: var(--danger-hover); /* A slightly darker red */
+}
+
+.btn-archive:disabled {
+    background-color: var(--disabled-color); /* Greyed out when disabled/updating */
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* Define CSS Variables if they don't exist */
+:root {
+    --danger-color: #e53e3e;
+    --danger-hover: #c53030;
+    --disabled-color: #a0aec0;
+}
 .left-panel h3 {
   margin-bottom: 20px;
   font-size: 20px;
