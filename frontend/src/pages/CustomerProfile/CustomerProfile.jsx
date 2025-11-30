@@ -72,7 +72,7 @@ const CustomerProfile = () => {
    }
 
    const customersList = customersSnapshot.docs.map(doc => ({
-    id: doc.id, // 🔑 IMPORTANT: Reading the document ID (which is the userId after sync)
+    id: doc.id, // The document key (hopefully the unique Firebase User ID)
     ...doc.data()
    }));
 
@@ -102,20 +102,20 @@ const CustomerProfile = () => {
  }, [currentCustomer]);
 
  // Fetch reviews for current customer
- const fetchReviews = useCallback(async (userId) => {
-  if (!userId) {
+ const fetchReviews = useCallback(async (uniqueId) => {
+  if (!uniqueId) {
    setReviews([]);
    return;
   }
 
   setLoadingReviews(true);
   try {
-   // 🔑 IMPORTANT: We use the userId (currentCustomer.id) to query the reviews collection.
-   console.log('Fetching reviews for user ID:', userId); 
+   // 🔑 Using the unique ID passed to query the reviews collection.
+   console.log('Fetching reviews for user ID:', uniqueId); 
    
    const reviewsCollection = collection(db, 'reviews');
-   // This relies on the 'userId' field in the 'reviews' document matching the customer's document ID.
-   const reviewsQuery = query(reviewsCollection, where('userId', '==', userId));
+   // The 'userId' field in the 'reviews' collection must match the uniqueId.
+   const reviewsQuery = query(reviewsCollection, where('userId', '==', uniqueId));
    const reviewsSnapshot = await getDocs(reviewsQuery);
    
    const reviewsList = reviewsSnapshot.docs.map(doc => ({
@@ -123,7 +123,7 @@ const CustomerProfile = () => {
     ...doc.data()
    }));
 
-   console.log(`Found ${reviewsList.length} reviews for user ID ${userId}`);
+   console.log(`Found ${reviewsList.length} reviews for user ID ${uniqueId}`);
    setReviews(reviewsList);
    
   } catch (err) {
@@ -136,9 +136,13 @@ const CustomerProfile = () => {
 
  // Fetch reviews when current customer changes
  useEffect(() => {
-  // Use currentCustomer.id which holds the unique Firebase User ID
-  if (currentCustomer?.id) { 
-   fetchReviews(currentCustomer.id);
+  // 🔑 FIX: Prioritize the 'userId' field from the customer document 
+  // as this is guaranteed to be the unique Firebase ID. 
+  // Fall back to 'id' (the document key) if 'userId' is missing.
+  const customerUniqueId = currentCustomer?.userId || currentCustomer?.id; 
+
+  if (customerUniqueId) { 
+   fetchReviews(customerUniqueId);
   } else {
    setReviews([]);
   }
@@ -205,8 +209,8 @@ const CustomerProfile = () => {
    }
 
    // Refresh reviews from Firebase after API sync
-   if (currentCustomer?.id) {
-    await fetchReviews(currentCustomer.id);
+   if (currentCustomer?.userId || currentCustomer?.id) {
+    await fetchReviews(currentCustomer?.userId || currentCustomer?.id);
    }
 
   } catch (err) {
