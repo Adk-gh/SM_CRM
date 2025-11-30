@@ -210,6 +210,10 @@ const SupportTickets = () => {
                                 posNotificationStatus: 'sent',
                                 posNotificationLog: new Date()
                             };
+                        } else if (ticketResult.status.toLowerCase().includes('already forwarded') ||
+                                   ticketResult.status.toLowerCase().includes('skipped')) {
+                            // Don't change status if already forwarded
+                            return ticket;
                         } else {
                             return {
                                 ...ticket,
@@ -253,6 +257,10 @@ const SupportTickets = () => {
                         posNotificationLog: serverTimestamp(),
                         updatedAt: serverTimestamp()
                     });
+                } else if (result.status.toLowerCase().includes('already forwarded') ||
+                           result.status.toLowerCase().includes('skipped')) {
+                    // Skip updating if already forwarded
+                    continue;
                 } else {
                     await updateDoc(ticketRef, {
                         posNotificationStatus: 'failed',
