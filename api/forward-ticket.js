@@ -9,8 +9,8 @@ const POS_API_URL = process.env.POS_API_URL;
 const POS_API_KEY = process.env.POS_API_KEY;
 const INV_API_URL = process.env.INV_API_URL;
 const INV_API_KEY = process.env.INV_API_KEY;
-const ECOMM_API_URL = process.env.ECOMM_API_URL;
-const ECOMM_API_KEY = process.env.ECOMM_API_KEY;
+const ECOMM_API_URL = process.env.SHOPPING_API_URL;
+const ECOMM_API_KEY = process.env.SHOPPING_API_KEY;
 
 /**
  * Helper function to securely call an external REST API.

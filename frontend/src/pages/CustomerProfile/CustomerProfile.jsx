@@ -37,17 +37,15 @@ const CustomerProfile = () => {
   
   // Search and filter states
   const [customerSearch, setCustomerSearch] = useState('');
-  const [purchaseSearch, setPurchaseSearch] = useState('');
-  const [purchaseBranchFilter, setPurchaseBranchFilter] = useState('all');
-  const [purchaseStoreFilter, setPurchaseStoreFilter] = useState('all');
+
   const [feedbackSearch, setFeedbackSearch] = useState('');
   const [feedbackBranchFilter, setFeedbackBranchFilter] = useState('all');
   const [feedbackStoreFilter, setFeedbackStoreFilter] = useState('all');
-  const [interactionSearch, setInteractionSearch] = useState('');
-  const [interactionTypeFilter, setInteractionTypeFilter] = useState('all');
+  const [supportSearch, setsupportSearch] = useState('');
+  const [supportTypeFilter, setsupportTypeFilter] = useState('all');
 
   // Chart refs
-  const purchaseChartRef = useRef(null);
+ 
   const sentimentChartRef = useRef(null);
   const spendingChartRef = useRef(null);
   
@@ -200,19 +198,7 @@ const CustomerProfile = () => {
   }, [currentCustomer, charts]);
 
 
-  // Helper function to get filtered purchases
-  const getFilteredPurchases = () => {
-    if (!currentCustomer || !currentCustomer.purchases) return [];
-    
-    return (currentCustomer.purchases || []).filter(purchase => {
-        const itemNames = (purchase.items || []).map(item => item.name).join(' ');
-        const matchesSearch = itemNames.toLowerCase().includes(purchaseSearch.toLowerCase());
-        const matchesBranch = purchaseBranchFilter === 'all' || purchase.branch === purchaseBranchFilter;
-        const matchesStore = purchaseStoreFilter === 'all' || purchase.store === purchaseStoreFilter;
-        
-        return matchesSearch && matchesBranch && matchesStore;
-    });
-  };
+  
   
   // Helper function to get filtered feedback
   const getFilteredFeedback = () => {
@@ -228,14 +214,14 @@ const CustomerProfile = () => {
     });
   };
 
-  // Helper function to get filtered interactions
-  const getFilteredInteractions = () => {
+  // Helper function to get filtered supports
+  const getFilteredsupports = () => {
     if (!currentCustomer) return [];
     
-    return (currentCustomer.interactions || []).filter(interaction => {
-      const interactionDetails = interaction.details || interaction.description || '';
-      const matchesSearch = interactionDetails.toLowerCase().includes(interactionSearch.toLowerCase());
-      const matchesType = interactionTypeFilter === 'all' || interaction.type === interactionTypeFilter;
+    return (currentCustomer.supports || []).filter(support => {
+      const supportDetails = support.details || support.description || '';
+      const matchesSearch = supportDetails.toLowerCase().includes(supportSearch.toLowerCase());
+      const matchesType = supportTypeFilter === 'all' || support.type === supportTypeFilter;
       
       return matchesSearch && matchesType;
     });
@@ -250,60 +236,9 @@ const CustomerProfile = () => {
     const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
     const textColor = isDark ? '#A3CAE9' : '#395A7F';
 
-    // Purchase Chart
-    if (purchaseChartRef.current && customer.purchases && customer.purchases.length > 0) {
-      const branchTotals = {};
-      customer.purchases.forEach(purchase => {
-        const branch = purchase.branch || 'Unknown Branch';
-        if (!branchTotals[branch]) {
-          branchTotals[branch] = 0;
-        }
-        branchTotals[branch] += purchase.amount || 0;
-      });
+   
 
-      const purchaseChart = new Chart(purchaseChartRef.current, {
-        type: 'bar',
-        data: {
-          labels: Object.keys(branchTotals),
-          datasets: [{
-            label: 'Purchase Amount (₱)',
-            data: Object.values(branchTotals),
-            backgroundColor: ['#395A7F', '#6E9FC1', '#A3CAE9', '#4F7DA8'],
-            borderRadius: 8
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              display: false
-            }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              grid: {
-                color: gridColor
-              },
-              ticks: {
-                color: textColor
-              }
-            },
-            x: {
-              grid: {
-                display: false
-              },
-              ticks: {
-                color: textColor
-              }
-            }
-          }
-        }
-      });
-
-      setCharts(prev => ({ ...prev, purchaseChart }));
-    }
+      
 
     // Sentiment Chart
     if (sentimentChartRef.current && customer.feedback && customer.feedback.length > 0) {
@@ -500,8 +435,8 @@ const CustomerProfile = () => {
                 <div className={`tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
                   Overview
                 </div>
-                <div className={`tab ${activeTab === 'interactions' ? 'active' : ''}`} onClick={() => setActiveTab('interactions')}>
-                  Interactions
+                <div className={`tab ${activeTab === 'supports' ? 'active' : ''}`} onClick={() => setActiveTab('supports')}>
+                  supports
                 </div>
                 <div className={`tab ${activeTab === 'analytics' ? 'active' : ''}`} onClick={() => setActiveTab('analytics')}>
                   Analytics
@@ -525,82 +460,10 @@ const CustomerProfile = () => {
                         <span className="detail-label">Member Since</span>
                         <span className="detail-value">{formatDate(currentCustomer.createdAt)}</span>
                       </li>
-                       <li className="detail-item">
-                        <span className="detail-label">Total Purchases</span>
-                        <span className="detail-value">{currentCustomer.purchases?.length || 0}</span>
-                      </li>
-                      <li className="detail-item">
-                        <span className="detail-label">Total Spent</span>
-                        <span className="detail-value">₱{currentCustomer.purchases?.reduce((sum, p) => sum + (p.amount || 0), 0).toFixed(2) || '0.00'}</span>
-                      </li>
                     </ul>
                   </div>
 
-                  <div className="detail-card">
-                    <h3><i className="fas fa-shopping-bag"></i> Purchase History</h3>
-                    <div className="search-controls">
-                      <div className="search-control">
-                        <input 
-                          type="text" 
-                          placeholder="Search products..."
-                          value={purchaseSearch}
-                          onChange={(e) => setPurchaseSearch(e.target.value)}
-                        />
-                      </div>
-                      <div className="search-control">
-                        <select 
-                          value={purchaseBranchFilter}
-                          onChange={(e) => setPurchaseBranchFilter(e.target.value)}
-                        >
-                          <option value="all">All Branches</option>
-                           <option value="SM Megamall">SM Megamall</option>
-                           <option value="SM Cebu">SM Cebu</option>
-                           <option value="SM North EDSA">SM North EDSA</option>
-                        </select>
-                      </div>
-                      <div className="search-control">
-                        <select 
-                          value={purchaseStoreFilter}
-                          onChange={(e) => setPurchaseStoreFilter(e.target.value)}
-                        >
-                          <option value="all">All Stores</option>
-                           <option value="TechWorld">TechWorld</option>
-                           <option value="Café Bliss">Café Bliss</option>
-                           <option value="Fashion Hub">Fashion Hub</option>
-                           <option value="Beauty Store">Beauty Store</option>
-                           <option value="Electronics Plus">Electronics Plus</option>
-                        </select>
-                      </div>
-                    </div>
-                    <ul className="purchase-list">
-                      {getFilteredPurchases().length === 0 ? (
-                        <li className="purchase-item" style={{ textAlign: 'center', color: 'var(--text-light)' }}>
-                           {currentCustomer.purchases && currentCustomer.purchases.length > 0 
-                            ? 'No purchases match your filters' 
-                            : 'No purchases found for this customer'
-                          }
-                        </li>
-                      ) : (
-                        getFilteredPurchases().map((purchase, index) => (
-                          <li key={purchase.id || index} className="purchase-item">
-                            <div className="purchase-header">
-                              <span className="purchase-amount">₱{purchase.amount.toFixed(2)}</span>
-                              <span className="purchase-date">{formatDate(purchase.date)}</span>
-                            </div>
-                            <div className="purchase-meta">
-                              <span className="purchase-branch">{purchase.branch}</span> | 
-                              <span className="purchase-store"> {purchase.store}</span>
-                            </div>
-                            <ul className="purchase-items-list">
-                              {(purchase.items || []).map((item, itemIndex) => (
-                                <li key={itemIndex}>{item.name} (Qty: {item.quantity})</li>
-                              ))}
-                            </ul>
-                          </li>
-                        ))
-                      )}
-                    </ul>
-                  </div>
+                  
 
                   <div className="detail-card">
                     <h3><i className="fas fa-comment-dots"></i> Feedback & Reviews</h3>
@@ -639,96 +502,43 @@ const CustomerProfile = () => {
                       </div>
                     </div>
                     <ul className="feedback-list">
-                      {getFilteredFeedback().length === 0 ? (
-                        <li className="feedback-item" style={{ textAlign: 'center', color: 'var(--text-light)' }}>
-                          {currentCustomer.feedback && currentCustomer.feedback.length > 0 
-                            ? 'No feedback matches your filters' 
-                            : 'No feedback found for this customer'
-                          }
-                        </li>
-                      ) : (
-                        getFilteredFeedback().map((feedback, index) => {
-                          const rating = feedback.rating || 0;
-                          const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
-                          return (
-                            <li key={feedback.id || index} className="feedback-item">
-                              <div className="feedback-header">
-                                <span className="feedback-branch">{feedback.branch}</span>
-                                <span className="feedback-date">{formatDate(feedback.date)}</span>
-                              </div>
-                              <div className="feedback-store">{feedback.store}</div>
-                              <div className="feedback-rating">
-                                <span className="rating-stars">{stars}</span>
-                                <span>{rating}/5</span>
-                              </div>
-                              <div className="feedback-review">"{feedback.review || feedback.comment}"</div>
-                            </li>
-                          );
-                        })
-                      )}
-                    </ul>
+  {getFilteredFeedback().length === 0 ? (
+    <li className="feedback-item" style={{ textAlign: 'center', color: 'var(--text-light)' }}>
+      {currentCustomer.feedback && currentCustomer.feedback.length > 0 
+        ? 'No feedback matches your filters' 
+        : 'No feedback found for this customer'}
+    </li>
+  ) : (
+    getFilteredFeedback().map((feedback, index) => {
+      const rating = feedback.rating || 0;
+      const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+      return (
+        <li key={feedback.id || index} className="feedback-item">
+          <div className="feedback-header">
+            <span className="feedback-branch">{feedback.branch || 'N/A'}</span>
+            <span className="feedback-date">{formatDate(feedback.timestamp)}</span>
+          </div>
+          <div className="feedback-store">{feedback.store || feedback.title}</div>
+          <div className="feedback-rating">
+            <span className="rating-stars">{stars}</span>
+            <span>{rating}/5</span>
+          </div>
+          <div className="feedback-review">"{feedback.comment}"</div>
+        </li>
+      );
+    })
+  )}
+</ul>
+
                   </div>
                 </div>
               )}
 
-              {/* Interactions Tab */}
-              {activeTab === 'interactions' && (
+              {/* supports Tab */}
+              {activeTab === 'supports' && (
                 <div className="tab-content active">
                   <div className="customer-details-grid">
-                    <div className="detail-card">
-                      <h3><i className="fas fa-history"></i> Interaction History</h3>
-                      <div className="search-controls">
-                        <div className="search-control">
-                          <input 
-                            type="text" 
-                            placeholder="Search interactions..."
-                            value={interactionSearch}
-                            onChange={(e) => setInteractionSearch(e.target.value)}
-                          />
-                        </div>
-                        <div className="search-control">
-                          <select 
-                            value={interactionTypeFilter}
-                            onChange={(e) => setInteractionTypeFilter(e.target.value)}
-                          >
-                            <option value="all">All Types</option>
-                            <option value="support">Support Ticket</option>
-                            <option value="feedback">Feedback</option>
-                            <option value="purchase">Purchase</option>
-                            <option value="call">Call</option>
-                            <option value="email">Email</option>
-                          </select>
-                        </div>
-                      </div>
-                      <ul className="interaction-list">
-                        {getFilteredInteractions().length === 0 ? (
-                          <li className="interaction-item" style={{ textAlign: 'center', color: 'var(--text-light)' }}>
-                            {currentCustomer.interactions && currentCustomer.interactions.length > 0 
-                              ? 'No interactions match your filters' 
-                              : 'No interactions found for this customer'
-                            }
-                          </li>
-                        ) : (
-                          getFilteredInteractions().map((interaction, index) => (
-                            <li key={interaction.id || index} className="interaction-item">
-                              <div className="interaction-header">
-                                <span className="interaction-type">{interaction.type}</span>
-                                <span className="interaction-date">{formatDate(interaction.date)}</span>
-                              </div>
-                              <div className="interaction-details">{interaction.details || interaction.description}</div>
-                              <div className="interaction-status">
-                                <span className={`status-badge status-${(interaction.status || '').toLowerCase()}`}>
-                                  {interaction.status || 'N/A'}
-                                </span>
-                                {interaction.assignedTo && (
-                                  <span className="assigned-to">Assigned to: {interaction.assignedTo}</span>
-                                )}
-                              </div>
-                            </li>
-                          ))
-                        )}
-                      </ul>
-                    </div>
+                    
 
                     <div className="detail-card">
                       <h3><i className="fas fa-headset"></i> Support Tickets</h3>
@@ -761,16 +571,7 @@ const CustomerProfile = () => {
               {activeTab === 'analytics' && (
                 <div className="tab-content active">
                   <div className="analytics-grid">
-                    <div className="analytics-card">
-                      <h3>Purchase Analytics</h3>
-                      <div className="chart-container">
-                        {currentCustomer.purchases && currentCustomer.purchases.length > 0 ? (
-                           <canvas ref={purchaseChartRef}></canvas>
-                        ) : (
-                           <div className="no-data-chart">No purchase data available to chart.</div>
-                        )}
-                      </div>
-                    </div>
+                    
 
                     <div className="analytics-card">
                       <h3>Sentiment Analysis</h3>
