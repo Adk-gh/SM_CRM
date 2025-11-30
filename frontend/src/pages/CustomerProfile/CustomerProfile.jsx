@@ -179,6 +179,44 @@ const CustomerProfile = () => {
     }
   };
 
+  const handleReloadReviews = async () => {
+    setLoadingReviews(true);
+    const reviewsApiUri = "https://sm-crm-rho.vercel.app/api/reviews"; 
+    
+    try {
+      console.log(`Triggering reviews data sync via: ${reviewsApiUri}`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      const res = await fetch(reviewsApiUri, { 
+        method: 'GET',
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        console.warn(`Reviews API trigger failed with status: ${res.status}. Proceeding with Firebase refresh.`);
+      } else {
+        console.log("Reviews data sync trigger successful.");
+      }
+
+      // Refresh reviews from Firebase after API sync
+      if (currentCustomer?.id) {
+        await fetchReviews(currentCustomer.id);
+      }
+
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        console.error("Reviews API request timed out.");
+      } else {
+        console.error("Network/CORS Error during reviews API trigger:", err);
+      }
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
+
   // Initialize component - load customers from Firestore
   useEffect(() => {
     const initialLoad = async () => {
@@ -484,7 +522,17 @@ const CustomerProfile = () => {
                   </div>
 
                   <div className="detail-card">
-                    <h3><i className="fas fa-star"></i> Customer Reviews</h3>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                      <h3><i className="fas fa-star"></i> Customer Reviews</h3>
+                      <button
+                        className="reload-button"
+                        onClick={handleReloadReviews} 
+                        disabled={loadingReviews}
+                        title="Reload reviews from API"
+                      >
+                        <i className={`fas fa-sync-alt ${loadingReviews ? 'fa-spin' : ''}`}></i>
+                      </button>
+                    </div>
                     <div className="search-controls">
                       <div className="search-control">
                         <input 

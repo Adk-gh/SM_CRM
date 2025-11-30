@@ -79,7 +79,7 @@ module.exports = async (req, res) => {
         );
         break;
 
-      case 'itemnotfound':
+      case 'stock_issue':
         const invPayload = { ...basePayload, task: 'VERIFY_STOCK' };
         results.inventory = await forwardRequest(
           `${INV_API_URL}/${ticketId}`, // e.g. https://access-token-main.vercel.app/api/firestore/invTicket/INV123
