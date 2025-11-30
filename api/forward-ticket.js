@@ -2,10 +2,9 @@ const fetch = require('node-fetch');
 require('dotenv').config();
 
 // 1. Load Secrets from Environment Variables
-const POS_API_URL = process.env.POS_API_URL;
-const POS_API_KEY = process.env.POS_API_KEY;
-const INV_API_URL = process.env.INV_API_URL; // e.g. https://access-token-main.vercel.app/api/firestore/invTicket
-const INVENTORY_API_KEY = process.env.INVENTORY_API_KEY; // ✅ your Inventory API key
+const POS_FUNCTION_URL = process.env.POS_SUPABASE_URL; // ✅ Supabase Edge Function URL
+const INV_API_URL = process.env.INV_API_URL;           // e.g. https://access-token-main.vercel.app/api/firestore/invTicket
+const INVENTORY_API_KEY = process.env.INVENTORY_API_KEY;
 const ONLINESHOPPING_API_URL = process.env.ONLINESHOPPING_API_URL;
 const ONLINESHOPPING_API_KEY = process.env.ONLINESHOPPING_API_KEY;
 
@@ -13,18 +12,18 @@ const ONLINESHOPPING_API_KEY = process.env.ONLINESHOPPING_API_KEY;
  * Helper function to securely call an external REST API.
  */
 const forwardRequest = async (url, payload, apiKey, useXApiKey = false) => {
-  if (!url || !apiKey) {
-    throw new Error('Missing URL or API Key configuration for the target system.');
+  if (!url) {
+    throw new Error('Missing URL configuration for the target system.');
   }
 
-  const headers = {
-    'Content-Type': 'application/json',
-  };
+  const headers = { 'Content-Type': 'application/json' };
 
-  if (useXApiKey) {
-    headers['X-API-Key'] = apiKey; // ✅ Inventory requires this
-  } else {
-    headers['Authorization'] = `Bearer ${apiKey}`; // POS / OnlineShopping
+  if (apiKey) {
+    if (useXApiKey) {
+      headers['X-API-Key'] = apiKey; // ✅ Inventory requires this
+    } else {
+      headers['Authorization'] = `Bearer ${apiKey}`; // Online Shopping
+    }
   }
 
   const response = await fetch(url, {
@@ -67,11 +66,33 @@ module.exports = async (req, res) => {
   try {
     switch (issueCategory.toLowerCase()) {
       case 'billing':
-        const posPayload = { ...basePayload, request_type: 'CUSTOMER_REFUND_ALERT' };
-        results.pos = await forwardRequest(POS_API_URL, posPayload, POS_API_KEY);
+        // ✅ Forward to POS Supabase Edge Function
+        const posPayload = {
+          ticketId,
+          issueTitle,
+          issueDescription,
+          userEmail,
+          issueCategory,
+          status: 'open',
+          createdAt: new Date().toISOString()
+        };
+
+        const posResponse = await fetch(POS_FUNCTION_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(posPayload)
+        });
+
+        if (!posResponse.ok) {
+          const errorDetails = await posResponse.text();
+          throw new Error(`POS function failed (${posResponse.status}): ${errorDetails}`);
+        }
+
+        results.pos = await posResponse.json();
         break;
 
       case 'access':
+        // ✅ Forward to Online Shopping
         results.onlineshopping = await forwardRequest(
           ONLINESHOPPING_API_URL,
           basePayload,
@@ -80,12 +101,13 @@ module.exports = async (req, res) => {
         break;
 
       case 'stock_issue':
+        // ✅ Forward to Inventory (collection = invTicket)
         const invPayload = { ...basePayload, task: 'VERIFY_STOCK' };
         results.inventory = await forwardRequest(
-          `${INV_API_URL}/${ticketId}`, // e.g. https://access-token-main.vercel.app/api/firestore/invTicket/INV123
+          `${INV_API_URL}/${ticketId}`,
           invPayload,
           INVENTORY_API_KEY,
-          true // ✅ use X-API-Key header
+          true // use X-API-Key header
         );
         break;
 
