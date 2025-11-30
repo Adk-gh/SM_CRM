@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-// Assuming 'db' is correctly imported from your firebase config
 import { db } from '../../../firebase'; 
 import './Support.css';
 
 // =======================================
-// INTERMEDIARY API CONSTANT
-// ** CRITICAL: REPLACE WITH YOUR DEPLOYED FORWARDING API ENDPOINT **
-// This URL assumes you renamed your deployed endpoint to 'forward-ticket'
+// API CONSTANTS - UPDATED FOR YOUR FORWARD-ALL ENDPOINT
 // =======================================
-const INTERMEDIARY_API_URL = 'https://your-api-domain.com/api/forward-ticket'; 
+const FORWARD_ALL_API_URL = 'https://sm-crm-rho.vercel.app/api/forward-all'; // Your GET endpoint
 
 // =======================================
 // SYSTEM & CATEGORY MAPPING CONSTANTS
@@ -21,7 +18,6 @@ const ISSUE_CATEGORIES = [
     { value: 'feature', label: 'Feature Request', icon: '✨' },
     { value: 'bug', label: 'Report a Bug', icon: '🐛' },
     { value: 'general', label: 'General Inquiry', icon: '❓' },
-    // Specific categories that trigger external systems:
     { value: 'transaction', label: 'Transaction Error', icon: '💸' },
     { value: 'fulfillment', label: 'Fulfillment/Shipping', icon: '📦' },
     { value: 'stock_issue', label: 'Inventory Stock Issue', icon: '📦' },
@@ -29,7 +25,6 @@ const ISSUE_CATEGORIES = [
     { value: 'website_error', label: 'E-commerce Website Error', icon: '🌐' }
 ];
 
-// Categories that require a call to the external API
 const RELEVANT_CATEGORIES = [
     'billing', 
     'transaction', 
@@ -39,16 +34,14 @@ const RELEVANT_CATEGORIES = [
     'website_error'
 ];
 
-
 // =======================================
-// MOCK AUTH HOOK (Simulates a logged-in Admin)
+// MOCK AUTH HOOK
 // =======================================
 const useMockAuth = () => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
     const getIdToken = async () => {
-        // In a real app, this returns the Firebase Auth ID token
         return 'mock-firebase-id-token-12345'; 
     };
 
@@ -64,19 +57,14 @@ const useMockAuth = () => {
             setUser(simulatedAdmin);
             setLoading(false);
         }, 500); 
-
     }, []);
 
     const isAdmin = user && (user.role === 'admin' || user.role === 'marketing');
-
     return { user, loading: loading, isAdmin };
 };
-// =======================================
 
 const SupportTickets = () => {
     const { user, loading: authLoading, isAdmin } = useMockAuth(); 
-
-    // State management
     const [theme, setTheme] = useState('light');
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedTicket, setSelectedTicket] = useState(null);
@@ -86,9 +74,7 @@ const SupportTickets = () => {
     const [alertType, setAlertType] = useState('success');
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true); 
-
-    const submissionUrl = "https://support.example.com/new-ticket?appId=12345";
-    const qrCodeUrl = `https://placehold.co/180x180/6E9FC1/FFFFFF?text=QR+Code`;
+    const [bulkForwardLoading, setBulkForwardLoading] = useState(false);
 
     // --- Data Fetching ---
     useEffect(() => {
@@ -124,13 +110,11 @@ const SupportTickets = () => {
                     description: data.issueDescription || 'No description provided',
                     categoryLabel: categoryMatch?.label || 'General Inquiry',
                     branchLabel: data.smBranch || 'N/A',
-                    // Fields for notification tracking
                     posNotificationStatus: data.posNotificationStatus || null 
                 });
             });
 
             ticketsData.sort((a, b) => new Date(b.createdAt?.toDate?.()) - new Date(a.createdAt?.toDate?.()));
-            
             setTickets(ticketsData);
         } catch (error) {
             console.error('Error fetching tickets:', error);
@@ -140,7 +124,7 @@ const SupportTickets = () => {
         }
     };
 
-    // --- Modal & Theme Functions ---
+    // --- Theme Functions ---
     useEffect(() => {
         const savedTheme = localStorage.getItem('theme') || 'light';
         setTheme(savedTheme);
@@ -166,10 +150,6 @@ const SupportTickets = () => {
         setSelectedTicket(null);
     };
 
-    const handleSuggestionClick = (reply) => {
-        setReplyText(reply + '\n\n---\n');
-    };
-
     const showAlertMessage = (message, type) => {
         setAlertMessage(message);
         setAlertType(type);
@@ -179,14 +159,13 @@ const SupportTickets = () => {
         }, 3000);
     };
 
-    // --- External System Notification Handler (REST API) ---
+    // --- UPDATED: External System Notification Handler ---
     const handleNotifySystem = async (ticket) => {
         if (!isAdmin || !user) {
             showAlertMessage('Permission denied. Must be logged in as staff.', 'danger');
             return;
         }
 
-        // Final check to ensure the category is configured for forwarding
         if (!RELEVANT_CATEGORIES.includes(ticket.issueCategory)) {
             showAlertMessage(`Notification is not configured for the '${ticket.issueCategory}' category.`, 'info');
             return;
@@ -199,46 +178,42 @@ const SupportTickets = () => {
 
         try {
             setLoading(true);
-            showAlertMessage(`Sending secure notification for category: ${ticket.issueCategory}...`, 'info');
+            showAlertMessage(`Forwarding ticket to external system...`, 'info');
 
-            // 1. Prepare Payload
-            const intermediaryPayload = {
-                ticketId: ticket.id,
-                subject: ticket.subject,
-                description: ticket.description,
-                requesterEmail: ticket.userEmail || ticket.requester, 
-                category: ticket.issueCategory, // CRITICAL: Send the category for routing
-            };
-
-            // 2. Call the deployed Intermediary API
+            // Call your forward-all API (which internally calls forward-ticket)
             const authToken = await user.getIdToken(); 
-            const response = await fetch(INTERMEDIARY_API_URL, {
-                method: 'POST',
+            const response = await fetch(FORWARD_ALL_API_URL, {
+                method: 'GET', // Your API uses GET method
                 headers: {
-                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${authToken}` 
-                },
-                body: JSON.stringify(intermediaryPayload),
+                }
             });
 
-            // 3. Update Firestore (Log the status)
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            
+            // Find if our specific ticket was forwarded in the results
+            const ticketResult = result.forwarded?.find(item => item.ticketId === ticket.id);
+            
             const ticketRef = doc(db, 'supportTickets', ticket.id);
             const statusUpdate = {};
 
-            if (response.ok) {
+            if (ticketResult && ticketResult.status.includes('forwarded')) {
                 statusUpdate.posNotificationStatus = 'sent'; 
                 statusUpdate.posNotificationLog = serverTimestamp();
-                showAlertMessage(`Successfully routed ticket to external system(s)!`, 'success');
+                showAlertMessage(`Successfully forwarded ticket to external system!`, 'success');
             } else {
                 statusUpdate.posNotificationStatus = 'failed';
                 statusUpdate.posNotificationLog = serverTimestamp();
-                 showAlertMessage(`Failed to forward ticket. Check backend logs for details.`, 'danger');
+                showAlertMessage(`Failed to forward ticket. System response: ${ticketResult?.status}`, 'danger');
             }
             
-            // Execute the Firestore update
             await updateDoc(ticketRef, { ...statusUpdate, updatedAt: serverTimestamp() });
 
-            // 4. Update local state
+            // Update local state
             setTickets(prevTickets => 
                 prevTickets.map(t => 
                   t.id === ticket.id ? { ...t, ...statusUpdate } : t
@@ -249,13 +224,50 @@ const SupportTickets = () => {
 
         } catch (error) {
             console.error('Notification failed:', error);
-            showAlertMessage(`Failed to notify external systems. Error: ${error.message}`, 'danger');
+            showAlertMessage(`Failed to forward ticket. Error: ${error.message}`, 'danger');
         } finally {
             setLoading(false);
         }
     };
 
-    // --- Ticket Resolution Handler (CRM Logic) ---
+    // --- NEW: Bulk Forward All Tickets ---
+    const handleBulkForwardAll = async () => {
+        if (!isAdmin || !user) {
+            showAlertMessage('Permission denied. Must be logged in as staff.', 'danger');
+            return;
+        }
+
+        try {
+            setBulkForwardLoading(true);
+            showAlertMessage('Bulk forwarding all tickets to external systems...', 'info');
+
+            const authToken = await user.getIdToken(); 
+            const response = await fetch(FORWARD_ALL_API_URL, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${authToken}` 
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            showAlertMessage(`Bulk forward completed! Processed ${result.forwarded?.length || 0} tickets.`, 'success');
+            
+            // Refresh tickets to get updated statuses
+            fetchTickets();
+
+        } catch (error) {
+            console.error('Bulk forward failed:', error);
+            showAlertMessage(`Bulk forward failed. Error: ${error.message}`, 'danger');
+        } finally {
+            setBulkForwardLoading(false);
+        }
+    };
+
+    // --- Ticket Resolution Handler ---
     const submitReply = async () => {
         if (replyText.trim() === '') {
             showAlertMessage('Please enter a response before sending.', 'danger');
@@ -342,7 +354,7 @@ const SupportTickets = () => {
                 <div className="custom-message-box" style={{ backgroundColor: alertType === 'success' ? 'var(--success-color)' : 'var(--danger-color)' }}>{alertMessage}</div>
             )}
 
-            {/* Dashboards and Stats (Omitted for brevity, but assumed to exist) */}
+            {/* Dashboards and Stats */}
             {(isAdmin && !authLoading) && (
                 <div className="charts-section">
                     <div className="chart-card">
@@ -353,13 +365,38 @@ const SupportTickets = () => {
                         </div>
                         <div className="chart-footer">Total Tickets: {stats.total}</div>
                     </div>
+
+                    {/* NEW: Bulk Forward Button */}
+                    <div className="chart-card">
+                        <h3>External Systems</h3>
+                        <div className="bulk-actions">
+                            <button 
+                                className="btn btn-primary" 
+                                onClick={handleBulkForwardAll}
+                                disabled={bulkForwardLoading || tickets.length === 0}
+                            >
+                                <i className={`fas ${bulkForwardLoading ? 'fa-spinner fa-spin' : 'fa-paper-plane'}`}></i>
+                                {bulkForwardLoading ? ' Forwarding All...' : ' Forward All Tickets'}
+                            </button>
+                            <p style={{ fontSize: '0.8rem', marginTop: '10px', color: 'var(--text-secondary)' }}>
+                                Forward all tickets to external systems
+                            </p>
+                        </div>
+                    </div>
                 </div>
             )}
 
             <div className="content-card ticket-table-container">
                 <div className="ticket-table-header">
                     <h3>All Support Tickets ({tickets.length})</h3>
-                    {isAdmin && (<button className="action-btn btn-secondary" onClick={fetchTickets} disabled={loading || authLoading}><i className={`fas ${loading ? 'fa-spinner fa-spin' : 'fa-sync'}`}></i> {loading ? ' Refreshing...' : ' Refresh'}</button>)}
+                    {isAdmin && (
+                        <div className="header-actions">
+                            <button className="action-btn btn-secondary" onClick={fetchTickets} disabled={loading || authLoading}>
+                                <i className={`fas ${loading ? 'fa-spinner fa-spin' : 'fa-sync'}`}></i> 
+                                {loading ? ' Refreshing...' : ' Refresh'}
+                            </button>
+                        </div>
+                    )}
                 </div>
                 <div className="ticket-table-wrapper">
                     <table className="ticket-table">
@@ -380,7 +417,6 @@ const SupportTickets = () => {
                     {selectedTicket && (
                         <>
                             <div className="ticket-details">
-                                {/* Basic Details (Omitted for brevity) */}
                                 <div className="detail-item"><span className="detail-label">Category</span><span className="detail-value">{selectedTicket.categoryLabel}</span></div>
                                 <div className="detail-item"><span className="detail-label">Status</span><span className="detail-value">{renderStatusBadge(selectedTicket.status)}</span></div>
                                 <div className="detail-item">
@@ -395,7 +431,7 @@ const SupportTickets = () => {
                                                 <i className="fas fa-exclamation-triangle"></i> Failed
                                             </span>
                                         ) : (
-                                            <span style={{ color: 'var(--text-secondary)' }}>N/A</span>
+                                            <span style={{ color: 'var(--text-secondary)' }}>Not Sent</span>
                                         )}
                                     </span>
                                 </div>
@@ -423,7 +459,7 @@ const SupportTickets = () => {
                                         style={{marginRight: '10px'}}
                                     >
                                         <i className="fas fa-bullhorn"></i> 
-                                        {loading ? 'Sending...' : selectedTicket.posNotificationStatus === 'sent' ? 'System Notified' : 'Notify External System'}
+                                        {loading ? 'Forwarding...' : selectedTicket.posNotificationStatus === 'sent' ? 'System Notified' : 'Forward to External System'}
                                     </button>
                                 )}
 
