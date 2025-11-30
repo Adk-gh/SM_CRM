@@ -26,8 +26,8 @@ module.exports = async (req, res) => {
     // 🔑 START CORS FIX
     // -------------------------------------------------------------------
     
-    // 1. Set the specific allowed origin (your React dev server)
-    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+    // 1. Set the specific allowed origin (your Vite dev server)
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
     
     // 2. Set the allowed methods
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
