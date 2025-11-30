@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Chart, registerables } from 'chart.js';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../../firebase'; // Adjust path to your firebase config
 import './CustomerProfile.css';
 
@@ -35,17 +35,18 @@ const CustomerProfile = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
+  // Reviews state
+  const [reviews, setReviews] = useState([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  
   // Search and filter states
   const [customerSearch, setCustomerSearch] = useState('');
-
-  const [feedbackSearch, setFeedbackSearch] = useState('');
-  const [feedbackBranchFilter, setFeedbackBranchFilter] = useState('all');
-  const [feedbackStoreFilter, setFeedbackStoreFilter] = useState('all');
+  const [reviewSearch, setReviewSearch] = useState('');
+  const [reviewRatingFilter, setReviewRatingFilter] = useState('all');
   const [supportSearch, setsupportSearch] = useState('');
   const [supportTypeFilter, setsupportTypeFilter] = useState('all');
 
   // Chart refs
- 
   const sentimentChartRef = useRef(null);
   const spendingChartRef = useRef(null);
   
@@ -55,7 +56,6 @@ const CustomerProfile = () => {
   // Fetch customers from Firebase Firestore (Reusable function)
   const fetchCustomers = useCallback(async () => {
     try {
-      // NOTE: Loading state is managed by the caller (handleReloadCustomers or useEffect)
       setError(null);
       
       console.log('Fetching customers from Firestore...');
@@ -97,12 +97,49 @@ const CustomerProfile = () => {
       setCustomers([]);
       setFilteredCustomers([]);
       setCurrentCustomer(null);
-      throw err; // Re-throw the error so the caller can catch it and reset loading
+      throw err;
     }
   }, [currentCustomer]);
 
-  // FIX: Function to invoke external API (to update DB) and then refresh local state (from Firebase)
-// ... (in CustomerProfile.jsx)
+  // Fetch reviews for current customer
+  const fetchReviews = useCallback(async (userId) => {
+    if (!userId) {
+      setReviews([]);
+      return;
+    }
+
+    setLoadingReviews(true);
+    try {
+      console.log('Fetching reviews for user:', userId);
+      
+      const reviewsCollection = collection(db, 'reviews');
+      const reviewsQuery = query(reviewsCollection, where('userId', '==', userId));
+      const reviewsSnapshot = await getDocs(reviewsQuery);
+      
+      const reviewsList = reviewsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      console.log(`Found ${reviewsList.length} reviews for user ${userId}`);
+      setReviews(reviewsList);
+      
+    } catch (err) {
+      console.error('Error fetching reviews:', err);
+      setReviews([]);
+    } finally {
+      setLoadingReviews(false);
+    }
+  }, []);
+
+  // Fetch reviews when current customer changes
+  useEffect(() => {
+    if (currentCustomer?.id) {
+      fetchReviews(currentCustomer.id);
+    } else {
+      setReviews([]);
+    }
+  }, [currentCustomer, fetchReviews]);
 
   const handleReloadCustomers = async () => {
     setLoading(true);
@@ -112,25 +149,21 @@ const CustomerProfile = () => {
     try {
       console.log(`Triggering external data sync via: ${apiUri}`);
       
-      // Step 1: Execute the API call to trigger the backend update
-      // Add a 10-second timeout for robustness
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 seconds timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
       const res = await fetch(apiUri, { 
         method: 'GET',
-        signal: controller.signal // Apply the abort signal
+        signal: controller.signal
       });
-      clearTimeout(timeoutId); // Clear the timeout if fetch completes
+      clearTimeout(timeoutId);
 
       if (!res.ok) {
-        // Log API status if response received but status is bad (e.g., 404, 500)
         console.warn(`External API trigger failed with status: ${res.status}. Proceeding with Firebase refresh.`);
       } else {
         console.log("External data sync trigger successful.");
       }
 
-      // Step 2: Refresh the local customer list from Firebase
       await fetchCustomers();
 
     } catch (err) {
@@ -138,7 +171,6 @@ const CustomerProfile = () => {
           console.error("API request timed out.");
           setError("Data synchronization request timed out.");
       } else {
-          // This block is where the "TypeError: Failed to fetch" is caught
           console.error("Network/CORS Error during API trigger or customer reload:", err);
           setError(`Failed to trigger data update or reload customers. Check network or CORS configuration: ${err.message}`);
       }
@@ -147,11 +179,8 @@ const CustomerProfile = () => {
     }
   };
 
-// ...
-
   // Initialize component - load customers from Firestore
   useEffect(() => {
-    // Initial load uses fetchCustomers directly
     const initialLoad = async () => {
       setLoading(true);
       try {
@@ -195,22 +224,16 @@ const CustomerProfile = () => {
     return () => {
       Object.values(charts).forEach(chart => chart && chart.destroy());
     };
-  }, [currentCustomer, charts]);
+  }, [currentCustomer, reviews, charts]);
 
-
-  
-  
-  // Helper function to get filtered feedback
-  const getFilteredFeedback = () => {
-    if (!currentCustomer) return [];
-    
-    return (currentCustomer.feedback || []).filter(feedback => {
-      const reviewText = feedback.review || feedback.comment || '';
-      const matchesSearch = reviewText.toLowerCase().includes(feedbackSearch.toLowerCase());
-      const matchesBranch = feedbackBranchFilter === 'all' || feedback.branch === feedbackBranchFilter;
-      const matchesStore = feedbackStoreFilter === 'all' || feedback.store === feedbackStoreFilter;
+  // Helper function to get filtered reviews
+  const getFilteredReviews = () => {
+    return reviews.filter(review => {
+      const matchesSearch = (review.comment || '').toLowerCase().includes(reviewSearch.toLowerCase()) ||
+                           (review.title || '').toLowerCase().includes(reviewSearch.toLowerCase());
+      const matchesRating = reviewRatingFilter === 'all' || review.rating === parseInt(reviewRatingFilter);
       
-      return matchesSearch && matchesBranch && matchesStore;
+      return matchesSearch && matchesRating;
     });
   };
 
@@ -236,20 +259,16 @@ const CustomerProfile = () => {
     const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
     const textColor = isDark ? '#A3CAE9' : '#395A7F';
 
-   
-
-      
-
-    // Sentiment Chart
-    if (sentimentChartRef.current && customer.feedback && customer.feedback.length > 0) {
-      const positiveCount = customer.feedback.filter(fb => (fb.sentiment || 0) > 0).length;
-      const negativeCount = customer.feedback.filter(fb => (fb.sentiment || 0) < 0).length;
-      const neutralCount = customer.feedback.filter(fb => (fb.sentiment || 0) === 0).length;
+    // Sentiment Chart - based on reviews
+    if (sentimentChartRef.current && reviews.length > 0) {
+      const positiveCount = reviews.filter(review => (review.rating || 0) >= 4).length;
+      const neutralCount = reviews.filter(review => (review.rating || 0) === 3).length;
+      const negativeCount = reviews.filter(review => (review.rating || 0) <= 2).length;
 
       const sentimentChart = new Chart(sentimentChartRef.current, {
         type: 'doughnut',
         data: {
-          labels: ['Positive', 'Neutral', 'Negative'],
+          labels: ['Positive (4-5★)', 'Neutral (3★)', 'Negative (1-2★)'],
           datasets: [{
             data: [positiveCount, neutralCount, negativeCount],
             backgroundColor: ['#48BB78', '#A3CAE9', '#F56565'],
@@ -347,7 +366,6 @@ const CustomerProfile = () => {
     }
   };
 
-
   return (
     <>
       <div className="split-content">
@@ -366,14 +384,13 @@ const CustomerProfile = () => {
                 />
               </div>
               <button
-              className="reload-button"
-              onClick={handleReloadCustomers} 
-              disabled={loading}
-              title="Reload customers from database (Triggers API sync)"
-            >
-              <i className={`fas fa-sync-alt ${loading ? 'fa-spin' : ''}`}></i>
-            </button>
-
+                className="reload-button"
+                onClick={handleReloadCustomers} 
+                disabled={loading}
+                title="Reload customers from database (Triggers API sync)"
+              >
+                <i className={`fas fa-sync-alt ${loading ? 'fa-spin' : ''}`}></i>
+              </button>
             </div>
           </div>
 
@@ -430,13 +447,12 @@ const CustomerProfile = () => {
             </div>
           ) : (
             <>
-              
               <div className="tabs">
                 <div className={`tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
                   Overview
                 </div>
                 <div className={`tab ${activeTab === 'supports' ? 'active' : ''}`} onClick={() => setActiveTab('supports')}>
-                  supports
+                  Support
                 </div>
                 <div className={`tab ${activeTab === 'analytics' ? 'active' : ''}`} onClick={() => setActiveTab('analytics')}>
                   Analytics
@@ -460,86 +476,79 @@ const CustomerProfile = () => {
                         <span className="detail-label">Member Since</span>
                         <span className="detail-value">{formatDate(currentCustomer.createdAt)}</span>
                       </li>
+                      <li className="detail-item">
+                        <span className="detail-label">Total Reviews</span>
+                        <span className="detail-value">{reviews.length}</span>
+                      </li>
                     </ul>
                   </div>
 
-                  
-
                   <div className="detail-card">
-                    <h3><i className="fas fa-comment-dots"></i> Feedback & Reviews</h3>
+                    <h3><i className="fas fa-star"></i> Customer Reviews</h3>
                     <div className="search-controls">
                       <div className="search-control">
                         <input 
                           type="text" 
                           placeholder="Search reviews..."
-                          value={feedbackSearch}
-                          onChange={(e) => setFeedbackSearch(e.target.value)}
+                          value={reviewSearch}
+                          onChange={(e) => setReviewSearch(e.target.value)}
                         />
                       </div>
                       <div className="search-control">
                         <select 
-                          value={feedbackBranchFilter}
-                          onChange={(e) => setFeedbackBranchFilter(e.target.value)}
+                          value={reviewRatingFilter}
+                          onChange={(e) => setReviewRatingFilter(e.target.value)}
                         >
-                          <option value="all">All Branches</option>
-                          <option value="SM Megamall">SM Megamall</option>
-                          <option value="SM Cebu">SM Cebu</option>
-                          <option value="SM North EDSA">SM North EDSA</option>
-                        </select>
-                      </div>
-                      <div className="search-control">
-                        <select 
-                          value={feedbackStoreFilter}
-                          onChange={(e) => setFeedbackStoreFilter(e.target.value)}
-                        >
-                          <option value="all">All Stores</option>
-                          <option value="TechWorld">TechWorld</option>
-                          <option value="Café Bliss">Café Bliss</option>
-                          <option value="Fashion Hub">Fashion Hub</option>
-                          <option value="Beauty Store">Beauty Store</option>
-                          <option value="Electronics Plus">Electronics Plus</option>
+                          <option value="all">All Ratings</option>
+                          <option value="5">5 Stars</option>
+                          <option value="4">4 Stars</option>
+                          <option value="3">3 Stars</option>
+                          <option value="2">2 Stars</option>
+                          <option value="1">1 Star</option>
                         </select>
                       </div>
                     </div>
-                    <ul className="feedback-list">
-  {getFilteredFeedback().length === 0 ? (
-    <li className="feedback-item" style={{ textAlign: 'center', color: 'var(--text-light)' }}>
-      {currentCustomer.feedback && currentCustomer.feedback.length > 0 
-        ? 'No feedback matches your filters' 
-        : 'No feedback found for this customer'}
-    </li>
-  ) : (
-    getFilteredFeedback().map((feedback, index) => {
-      const rating = feedback.rating || 0;
-      const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
-      return (
-        <li key={feedback.id || index} className="feedback-item">
-          <div className="feedback-header">
-            <span className="feedback-branch">{feedback.branch || 'N/A'}</span>
-            <span className="feedback-date">{formatDate(feedback.timestamp)}</span>
-          </div>
-          <div className="feedback-store">{feedback.store || feedback.title}</div>
-          <div className="feedback-rating">
-            <span className="rating-stars">{stars}</span>
-            <span>{rating}/5</span>
-          </div>
-          <div className="feedback-review">"{feedback.comment}"</div>
-        </li>
-      );
-    })
-  )}
-</ul>
-
+                    
+                    {loadingReviews ? (
+                      <div className="loading">Loading reviews...</div>
+                    ) : (
+                      <ul className="feedback-list">
+                        {getFilteredReviews().length === 0 ? (
+                          <li className="feedback-item" style={{ textAlign: 'center', color: 'var(--text-light)' }}>
+                            {reviews.length > 0 
+                              ? 'No reviews match your filters' 
+                              : 'No reviews found for this customer'}
+                          </li>
+                        ) : (
+                          getFilteredReviews().map((review) => {
+                            const rating = review.rating || 0;
+                            const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+                            return (
+                              <li key={review.id} className="feedback-item">
+                                <div className="feedback-header">
+                                  <span className="feedback-branch">{review.userName || currentCustomer.fullName}</span>
+                                  <span className="feedback-date">{formatDate(review.timestamp)}</span>
+                                </div>
+                                <div className="feedback-store">{review.title || 'Review'}</div>
+                                <div className="feedback-rating">
+                                  <span className="rating-stars">{stars}</span>
+                                  <span>{rating}/5</span>
+                                </div>
+                                <div className="feedback-review">"{review.comment}"</div>
+                              </li>
+                            );
+                          })
+                        )}
+                      </ul>
+                    )}
                   </div>
                 </div>
               )}
 
-              {/* supports Tab */}
+              {/* Support Tab */}
               {activeTab === 'supports' && (
                 <div className="tab-content active">
                   <div className="customer-details-grid">
-                    
-
                     <div className="detail-card">
                       <h3><i className="fas fa-headset"></i> Support Tickets</h3>
                       <ul className="ticket-list">
@@ -571,15 +580,13 @@ const CustomerProfile = () => {
               {activeTab === 'analytics' && (
                 <div className="tab-content active">
                   <div className="analytics-grid">
-                    
-
                     <div className="analytics-card">
-                      <h3>Sentiment Analysis</h3>
+                      <h3>Review Sentiment Analysis</h3>
                       <div className="chart-container">
-                        {currentCustomer.feedback && currentCustomer.feedback.length > 0 ? (
+                        {reviews.length > 0 ? (
                             <canvas ref={sentimentChartRef}></canvas>
                         ) : (
-                           <div className="no-data-chart">No feedback data available to chart sentiment.</div>
+                           <div className="no-data-chart">No review data available to chart sentiment.</div>
                         )}
                       </div>
                     </div>

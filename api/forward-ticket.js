@@ -1,10 +1,10 @@
-const fetch = require('node-fetch'); 
-require('dotenv').config(); 
+const fetch = require('node-fetch');
+require('dotenv').config();
 
 // 1. Load Secrets from Environment Variables
 const POS_API_URL = process.env.POS_API_URL;
 const POS_API_KEY = process.env.POS_API_KEY;
-const INV_API_URL = process.env.INV_API_URL;
+const INV_API_URL = process.env.INV_API_URL; // e.g. https://inventory-system-domain.com/api/firestore/tickets
 const INV_API_KEY = process.env.INV_API_KEY;
 const ONLINESHOPPING_API_URL = process.env.ONLINESHOPPING_API_URL;
 const ONLINESHOPPING_API_KEY = process.env.ONLINESHOPPING_API_KEY;
@@ -21,7 +21,7 @@ const forwardRequest = async (url, payload, apiKey) => {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`, 
+      'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify(payload),
   });
@@ -33,7 +33,6 @@ const forwardRequest = async (url, payload, apiKey) => {
 
   return response.json();
 };
-
 
 // Main Serverless Handler
 module.exports = async (req, res) => {
@@ -81,7 +80,12 @@ module.exports = async (req, res) => {
       case 'itemnotfound':
         // Forward to Inventory
         const invPayload = { ...basePayload, task: 'VERIFY_STOCK' };
-        results.inventory = await forwardRequest(INV_API_URL, invPayload, INV_API_KEY);
+        // Append ticketId to the Inventory endpoint
+        results.inventory = await forwardRequest(
+          `${INV_API_URL}/${ticketId}`,
+          invPayload,
+          INV_API_KEY
+        );
         break;
 
       default:
