@@ -4,9 +4,9 @@ import { db } from '../../../firebase';
 import './Support.css';
 
 // =======================================
-// API CONSTANTS - UPDATED FOR YOUR FORWARD-ALL ENDPOINT
+// API CONSTANTS - USE YOUR ACTUAL URL
 // =======================================
-const FORWARD_ALL_API_URL = 'https://sm-crm-rho.vercel.app/api/forward-all'; // Your GET endpoint
+const FORWARD_ALL_API_URL = 'https://sm-crm-rho.vercel.app/api/forward-all';
 
 // =======================================
 // SYSTEM & CATEGORY MAPPING CONSTANTS
@@ -156,10 +156,88 @@ const SupportTickets = () => {
         setShowAlert(true);
         setTimeout(() => {
             setShowAlert(false);
-        }, 3000);
+        }, 5000);
     };
 
-    // --- UPDATED: External System Notification Handler ---
+    // --- UPDATED: Bulk Forward All Tickets ---
+    const handleBulkForwardAll = async () => {
+        if (!isAdmin || !user) {
+            showAlertMessage('Permission denied. Must be logged in as staff.', 'danger');
+            return;
+        }
+
+        try {
+            setBulkForwardLoading(true);
+            showAlertMessage('Bulk forwarding all tickets to external systems...', 'info');
+
+            const response = await fetch(FORWARD_ALL_API_URL, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    // Remove Authorization header if your API doesn't require it
+                    // 'Authorization': `Bearer ${await user.getIdToken()}`
+                }
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.forwarded && result.forwarded.length > 0) {
+                showAlertMessage(`Successfully forwarded ${result.forwarded.length} tickets to external systems!`, 'success');
+                
+                // Update local ticket statuses based on the result
+                const updatedTickets = tickets.map(ticket => {
+                    const ticketResult = result.forwarded.find(item => item.ticketId === ticket.id);
+                    if (ticketResult && ticketResult.status.includes('forwarded')) {
+                        return {
+                            ...ticket,
+                            posNotificationStatus: 'sent',
+                            posNotificationLog: new Date()
+                        };
+                    }
+                    return ticket;
+                });
+                
+                setTickets(updatedTickets);
+                
+                // Also update Firestore with the new statuses
+                await updateFirestoreTickets(result.forwarded);
+                
+            } else {
+                showAlertMessage('No tickets were forwarded. Please check if there are tickets to process.', 'info');
+            }
+
+        } catch (error) {
+            console.error('Bulk forward failed:', error);
+            showAlertMessage(`Bulk forward failed: ${error.message}`, 'danger');
+        } finally {
+            setBulkForwardLoading(false);
+        }
+    };
+
+    // Helper function to update Firestore with forwarding status
+    const updateFirestoreTickets = async (forwardedResults) => {
+        try {
+            for (const result of forwardedResults) {
+                if (result.status.includes('forwarded')) {
+                    const ticketRef = doc(db, 'supportTickets', result.ticketId);
+                    await updateDoc(ticketRef, {
+                        posNotificationStatus: 'sent',
+                        posNotificationLog: serverTimestamp(),
+                        updatedAt: serverTimestamp()
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Error updating Firestore tickets:', error);
+        }
+    };
+
+    // --- Individual Ticket Forwarding ---
     const handleNotifySystem = async (ticket) => {
         if (!isAdmin || !user) {
             showAlertMessage('Permission denied. Must be logged in as staff.', 'danger');
@@ -180,12 +258,11 @@ const SupportTickets = () => {
             setLoading(true);
             showAlertMessage(`Forwarding ticket to external system...`, 'info');
 
-            // Call your forward-all API (which internally calls forward-ticket)
-            const authToken = await user.getIdToken(); 
+            // Since your API forwards all tickets, we'll call it and then check the specific result
             const response = await fetch(FORWARD_ALL_API_URL, {
-                method: 'GET', // Your API uses GET method
+                method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${authToken}` 
+                    'Content-Type': 'application/json',
                 }
             });
 
@@ -195,7 +272,7 @@ const SupportTickets = () => {
 
             const result = await response.json();
             
-            // Find if our specific ticket was forwarded in the results
+            // Find if our specific ticket was forwarded
             const ticketResult = result.forwarded?.find(item => item.ticketId === ticket.id);
             
             const ticketRef = doc(db, 'supportTickets', ticket.id);
@@ -227,43 +304,6 @@ const SupportTickets = () => {
             showAlertMessage(`Failed to forward ticket. Error: ${error.message}`, 'danger');
         } finally {
             setLoading(false);
-        }
-    };
-
-    // --- NEW: Bulk Forward All Tickets ---
-    const handleBulkForwardAll = async () => {
-        if (!isAdmin || !user) {
-            showAlertMessage('Permission denied. Must be logged in as staff.', 'danger');
-            return;
-        }
-
-        try {
-            setBulkForwardLoading(true);
-            showAlertMessage('Bulk forwarding all tickets to external systems...', 'info');
-
-            const authToken = await user.getIdToken(); 
-            const response = await fetch(FORWARD_ALL_API_URL, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${authToken}` 
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const result = await response.json();
-            showAlertMessage(`Bulk forward completed! Processed ${result.forwarded?.length || 0} tickets.`, 'success');
-            
-            // Refresh tickets to get updated statuses
-            fetchTickets();
-
-        } catch (error) {
-            console.error('Bulk forward failed:', error);
-            showAlertMessage(`Bulk forward failed. Error: ${error.message}`, 'danger');
-        } finally {
-            setBulkForwardLoading(false);
         }
     };
 
@@ -311,11 +351,13 @@ const SupportTickets = () => {
     const calculateStats = () => {
         const openTickets = tickets.filter(t => t.status === 'open');
         const resolvedTickets = tickets.filter(t => t.status === 'resolved');
-        const categoryCounts = ISSUE_CATEGORIES.map(cat => ({
-            ...cat,
-            count: tickets.filter(t => t.issueCategory === cat.value).length
-        }));
-        return { open: openTickets.length, resolved: resolvedTickets.length, total: tickets.length, categoryCounts };
+        const forwardedTickets = tickets.filter(t => t.posNotificationStatus === 'sent');
+        return { 
+            open: openTickets.length, 
+            resolved: resolvedTickets.length, 
+            forwarded: forwardedTickets.length,
+            total: tickets.length 
+        };
     };
 
     const stats = calculateStats();
@@ -348,10 +390,19 @@ const SupportTickets = () => {
     // --- Main Render Structure ---
     return (
         <div className="support-tickets-full-width">
-            <div className="theme-toggle"><button id="theme-btn" className="theme-btn" aria-label="Toggle theme" onClick={toggleTheme}><i className={theme === 'dark' ? 'fas fa-moon' : 'fas fa-sun'}></i></button></div>
+            <div className="theme-toggle">
+                <button id="theme-btn" className="theme-btn" aria-label="Toggle theme" onClick={toggleTheme}>
+                    <i className={theme === 'dark' ? 'fas fa-moon' : 'fas fa-sun'}></i>
+                </button>
+            </div>
 
             {showAlert && (
-                <div className="custom-message-box" style={{ backgroundColor: alertType === 'success' ? 'var(--success-color)' : 'var(--danger-color)' }}>{alertMessage}</div>
+                <div className="custom-message-box" style={{ 
+                    backgroundColor: alertType === 'success' ? 'var(--success-color)' : 
+                                   alertType === 'info' ? 'var(--info-color)' : 'var(--danger-color)' 
+                }}>
+                    {alertMessage}
+                </div>
             )}
 
             {/* Dashboards and Stats */}
@@ -360,13 +411,20 @@ const SupportTickets = () => {
                     <div className="chart-card">
                         <h3>Ticket Overview</h3>
                         <div className="chart-container open-tickets-chart">
-                            <div className="bar high" style={{height: `${(stats.open / Math.max(stats.total, 1)) * 100}%`}}><span className="bar-label">Open ({stats.open})</span></div>
-                            <div className="bar resolved" style={{height: `${(stats.resolved / Math.max(stats.total, 1)) * 100}%`}}><span className="bar-label">Resolved ({stats.resolved})</span></div>
+                            <div className="bar high" style={{height: `${(stats.open / Math.max(stats.total, 1)) * 100}%`}}>
+                                <span className="bar-label">Open ({stats.open})</span>
+                            </div>
+                            <div className="bar resolved" style={{height: `${(stats.resolved / Math.max(stats.total, 1)) * 100}%`}}>
+                                <span className="bar-label">Resolved ({stats.resolved})</span>
+                            </div>
                         </div>
-                        <div className="chart-footer">Total Tickets: {stats.total}</div>
+                        <div className="chart-footer">
+                            <div>Total: {stats.total}</div>
+                            <div>Forwarded: {stats.forwarded}</div>
+                        </div>
                     </div>
 
-                    {/* NEW: Bulk Forward Button */}
+                    {/* Bulk Forward Button */}
                     <div className="chart-card">
                         <h3>External Systems</h3>
                         <div className="bulk-actions">
@@ -379,7 +437,7 @@ const SupportTickets = () => {
                                 {bulkForwardLoading ? ' Forwarding All...' : ' Forward All Tickets'}
                             </button>
                             <p style={{ fontSize: '0.8rem', marginTop: '10px', color: 'var(--text-secondary)' }}>
-                                Forward all tickets to external systems
+                                Forward all relevant tickets to external systems
                             </p>
                         </div>
                     </div>
@@ -400,7 +458,17 @@ const SupportTickets = () => {
                 </div>
                 <div className="ticket-table-wrapper">
                     <table className="ticket-table">
-                        <thead><tr><th>ID</th><th>Subject</th><th>Requester</th><th>Priority</th><th>Status</th><th>Created</th><th>Action</th></tr></thead>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Subject</th>
+                                <th>Requester</th>
+                                <th>Priority</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
                         <tbody>{renderTickets()}</tbody>
                     </table>
                 </div>
@@ -417,8 +485,14 @@ const SupportTickets = () => {
                     {selectedTicket && (
                         <>
                             <div className="ticket-details">
-                                <div className="detail-item"><span className="detail-label">Category</span><span className="detail-value">{selectedTicket.categoryLabel}</span></div>
-                                <div className="detail-item"><span className="detail-label">Status</span><span className="detail-value">{renderStatusBadge(selectedTicket.status)}</span></div>
+                                <div className="detail-item">
+                                    <span className="detail-label">Category</span>
+                                    <span className="detail-value">{selectedTicket.categoryLabel}</span>
+                                </div>
+                                <div className="detail-item">
+                                    <span className="detail-label">Status</span>
+                                    <span className="detail-value">{renderStatusBadge(selectedTicket.status)}</span>
+                                </div>
                                 <div className="detail-item">
                                     <span className="detail-label">System Notification</span>
                                     <span className="detail-value">
@@ -439,12 +513,19 @@ const SupportTickets = () => {
 
                             <div className="suggestions-section">
                                 <h4>Ticket Description</h4>
-                                <p style={{color: 'var(--text-primary)', marginBottom: '20px', lineHeight: '1.6'}}>{selectedTicket.description}</p>
+                                <p style={{color: 'var(--text-primary)', marginBottom: '20px', lineHeight: '1.6'}}>
+                                    {selectedTicket.description}
+                                </p>
                             </div>
 
                             <div className="reply-section">
                                 <label htmlFor="reply-textarea">Agent Reply</label>
-                                <textarea id="reply-textarea" placeholder="Type your response..." value={replyText} onChange={(e) => setReplyText(e.target.value)}></textarea>
+                                <textarea 
+                                    id="reply-textarea" 
+                                    placeholder="Type your response..." 
+                                    value={replyText} 
+                                    onChange={(e) => setReplyText(e.target.value)}
+                                ></textarea>
                             </div>
 
                             <div className="modal-actions">

@@ -10,27 +10,25 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-// CORS headers
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
-
 module.exports = async (req, res) => {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return res.status(200).set(corsHeaders).send('OK');
+    return res.status(200).end();
   }
 
   if (req.method !== 'GET') {
-    return res.status(405).set(corsHeaders).json({ message: 'Method Not Allowed' });
+    return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
   try {
     const snapshot = await db.collection('supportTickets').get();
     if (snapshot.empty) {
-      return res.status(200).set(corsHeaders).json({ message: 'No tickets found.' });
+      return res.status(200).json({ message: 'No tickets found.' });
     }
 
     const results = [];
@@ -55,9 +53,9 @@ module.exports = async (req, res) => {
       results.push({ ticketId: doc.id, status: result.message });
     }
 
-    return res.status(200).set(corsHeaders).json({ forwarded: results });
+    return res.status(200).json({ forwarded: results });
   } catch (e) {
     console.error('Bulk Forward Error:', e.message);
-    return res.status(500).set(corsHeaders).json({ message: 'Failed to forward tickets', error: e.message });
+    return res.status(500).json({ message: 'Failed to forward tickets', error: e.message });
   }
 };
