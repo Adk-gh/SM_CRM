@@ -16,7 +16,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const snapshot = await db.collection('SupportTicket').get();
+    const snapshot = await db.collection('supportTickets').get();
     if (snapshot.empty) {
       return res.status(200).json({ message: 'No tickets found.' });
     }
