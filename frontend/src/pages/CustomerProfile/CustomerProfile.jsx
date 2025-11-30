@@ -102,26 +102,71 @@ const CustomerProfile = () => {
   }, [currentCustomer]);
 
   // Fetch reviews for current customer
-  const fetchReviews = useCallback(async (userId) => {
-    if (!userId) {
+  const fetchReviews = useCallback(async (customerId, customerEmail) => {
+    if (!customerId && !customerEmail) {
       setReviews([]);
       return;
     }
 
     setLoadingReviews(true);
     try {
-      console.log('Fetching reviews for user:', userId);
+      console.log('Fetching reviews for customer:', { id: customerId, email: customerEmail });
       
       const reviewsCollection = collection(db, 'reviews');
-      const reviewsQuery = query(reviewsCollection, where('userId', '==', userId));
-      const reviewsSnapshot = await getDocs(reviewsQuery);
+      let reviewsList = [];
       
-      const reviewsList = reviewsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      // Try fetching by userId (which should match customer document ID)
+      if (customerId) {
+        console.log('Trying to fetch reviews with userId:', customerId);
+        const reviewsQuery = query(reviewsCollection, where('userId', '==', customerId));
+        const reviewsSnapshot = await getDocs(reviewsQuery);
+        reviewsList = reviewsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        console.log(`Found ${reviewsList.length} reviews by userId`);
+      }
+      
+      // If no results and email is available, try with email field
+      if (reviewsList.length === 0 && customerEmail) {
+        console.log('No reviews found with userId, trying email field:', customerEmail);
+        const reviewsQuery = query(reviewsCollection, where('email', '==', customerEmail));
+        const reviewsSnapshot = await getDocs(reviewsQuery);
+        reviewsList = reviewsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        console.log(`Found ${reviewsList.length} reviews by email`);
+      }
+      
+      // If still no results, try with userEmail field
+      if (reviewsList.length === 0 && customerEmail) {
+        console.log('Trying userEmail field:', customerEmail);
+        const reviewsQuery = query(reviewsCollection, where('userEmail', '==', customerEmail));
+        const reviewsSnapshot = await getDocs(reviewsQuery);
+        reviewsList = reviewsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        console.log(`Found ${reviewsList.length} reviews by userEmail`);
+      }
 
-      console.log(`Found ${reviewsList.length} reviews for user ${userId}`);
+      console.log(`Total reviews found: ${reviewsList.length}`);
+      
+      // Debug: log the first review structure if available
+      if (reviewsList.length > 0) {
+        console.log('Sample review structure:', reviewsList[0]);
+      } else {
+        console.log('No reviews found. Fetching all reviews to check structure...');
+        // Fetch first few reviews to inspect structure
+        const allReviewsSnapshot = await getDocs(reviewsCollection);
+        const allReviews = allReviewsSnapshot.docs.slice(0, 3).map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        console.log('Sample reviews from database:', allReviews);
+      }
+      
       setReviews(reviewsList);
       
     } catch (err) {
@@ -135,7 +180,7 @@ const CustomerProfile = () => {
   // Fetch reviews when current customer changes
   useEffect(() => {
     if (currentCustomer?.id) {
-      fetchReviews(currentCustomer.id);
+      fetchReviews(currentCustomer.id, currentCustomer.email);
     } else {
       setReviews([]);
     }
@@ -203,7 +248,7 @@ const CustomerProfile = () => {
 
       // Refresh reviews from Firebase after API sync
       if (currentCustomer?.id) {
-        await fetchReviews(currentCustomer.id);
+        await fetchReviews(currentCustomer.id, currentCustomer.email);
       }
 
     } catch (err) {
