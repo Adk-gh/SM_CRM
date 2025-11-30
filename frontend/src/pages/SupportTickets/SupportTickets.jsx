@@ -174,8 +174,6 @@ const SupportTickets = () => {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
-                    // Remove Authorization header if your API doesn't require it
-                    // 'Authorization': `Bearer ${await user.getIdToken()}`
                 }
             });
 
@@ -241,11 +239,6 @@ const SupportTickets = () => {
     const handleNotifySystem = async (ticket) => {
         if (!isAdmin || !user) {
             showAlertMessage('Permission denied. Must be logged in as staff.', 'danger');
-            return;
-        }
-
-        if (!RELEVANT_CATEGORIES.includes(ticket.issueCategory)) {
-            showAlertMessage(`Notification is not configured for the '${ticket.issueCategory}' category.`, 'info');
             return;
         }
 
@@ -531,18 +524,16 @@ const SupportTickets = () => {
                             <div className="modal-actions">
                                 <button className="btn btn-secondary" onClick={closeModal}>Cancel</button>
                                 
-                                {/* ACTION BUTTON FOR EXTERNAL NOTIFICATION */}
-                                {(selectedTicket.status === 'open' && RELEVANT_CATEGORIES.includes(selectedTicket.issueCategory)) && (
-                                    <button 
-                                        className="btn btn-tertiary" 
-                                        onClick={(e) => { e.stopPropagation(); handleNotifySystem(selectedTicket); }}
-                                        disabled={loading || selectedTicket.posNotificationStatus === 'sent'}
-                                        style={{marginRight: '10px'}}
-                                    >
-                                        <i className="fas fa-bullhorn"></i> 
-                                        {loading ? 'Forwarding...' : selectedTicket.posNotificationStatus === 'sent' ? 'System Notified' : 'Forward to External System'}
-                                    </button>
-                                )}
+                                {/* ACTION BUTTON FOR EXTERNAL NOTIFICATION - Always visible */}
+                                <button 
+                                    className="btn btn-tertiary" 
+                                    onClick={(e) => { e.stopPropagation(); handleNotifySystem(selectedTicket); }}
+                                    disabled={loading || selectedTicket.posNotificationStatus === 'sent'}
+                                    style={{marginRight: '10px'}}
+                                >
+                                    <i className="fas fa-bullhorn"></i> 
+                                    {loading ? 'Forwarding...' : selectedTicket.posNotificationStatus === 'sent' ? 'System Notified' : 'Forward to External System'}
+                                </button>
 
                                 <button className="btn btn-primary" onClick={submitReply} disabled={loading}>
                                     {selectedTicket.status === 'resolved' ? 'Update Reply' : 'Send Reply & Resolve'}
