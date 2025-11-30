@@ -4,7 +4,7 @@ require('dotenv').config();
 // 1. Load Secrets from Environment Variables
 const POS_API_URL = process.env.POS_API_URL;
 const POS_API_KEY = process.env.POS_API_KEY;
-const INV_API_URL = process.env.INV_API_URL; // e.g. https://inventory-system-domain.com/api/firestore/tickets
+const INV_API_URL = process.env.INV_API_URL; // e.g. https://access-token-main.vercel.app/api/firestore/invTicket
 const INV_API_KEY = process.env.INV_API_KEY;
 const ONLINESHOPPING_API_URL = process.env.ONLINESHOPPING_API_URL;
 const ONLINESHOPPING_API_KEY = process.env.ONLINESHOPPING_API_KEY;
@@ -78,11 +78,10 @@ module.exports = async (req, res) => {
         break;
 
       case 'itemnotfound':
-        // Forward to Inventory
+        // Forward to Inventory (collection = invTicket)
         const invPayload = { ...basePayload, task: 'VERIFY_STOCK' };
-        // Append ticketId to the Inventory endpoint
         results.inventory = await forwardRequest(
-          `${INV_API_URL}/${ticketId}`,
+          `${INV_API_URL}/${ticketId}`, // e.g. https://access-token-main.vercel.app/api/firestore/invTicket/INV123
           invPayload,
           INV_API_KEY
         );
