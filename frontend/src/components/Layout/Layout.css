@@ -39,154 +39,113 @@
 /* ===== User Profile Styles (MODERNIZED) ===== */
 /* ------------------------------------------- */
 
+/* ===== User Profile ===== */
 .user-profile {
   position: relative;
-  transition: all 0.3s ease;
 }
 
 .profile-trigger {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 18px; 
-  border-radius: 50px; /* Pill shape */
+  gap: 15px;
+  background: var(--card-bg);
+  padding: 12px 20px;
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--border-light);
   cursor: pointer;
   transition: all 0.3s ease;
-  background: var(--card-bg);
-  border: 1px solid var(--border-light);
-  box-shadow: var(--card-shadow);
 }
 
 .profile-trigger:hover {
-  background: var(--bg-secondary);
-  border-color: var(--accent-primary);
-  transform: none;
+  box-shadow: var(--card-hover);
+  transform: translateY(-2px);
 }
 
 .user-avatar {
-  width: 44px; 
-  height: 44px;
+  width: 45px;
+  height: 45px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-weight: 700;
-  font-size: 16px;
-  border: 3px solid var(--bg-primary);
-  box-shadow: 0 0 0 2px var(--accent-light);
-}
-
-.user-info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  flex-grow: 1;
+  font-weight: 600;
+  font-size: 18px;
 }
 
 .user-info h4 {
-  margin: 0 0 2px 0;
   font-size: 16px;
+  font-weight: 600;
   color: var(--text-primary);
-  font-weight: 700;
+  margin-bottom: 2px;
 }
 
 .user-info p {
-  margin: 0 0 0px 0;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-secondary);
-}
-
-.user-info .user-role-badge {
-  background: var(--accent-light);
-  color: var(--accent-primary);
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-top: 4px;
-}
-
-.profile-trigger .fa-chevron-down {
-  transition: transform 0.3s ease;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.user-profile.active .profile-trigger .fa-chevron-down {
-  transform: rotate(180deg);
 }
 
 .profile-menu {
   position: absolute;
-  top: calc(100% + 10px);
+  top: 100%;
   right: 0;
+  margin-top: 10px;
   background: var(--card-bg);
-  border: 1px solid var(--border-light);
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  min-width: 220px;
-  z-index: 1000;
-  display: none;
-  overflow: hidden;
-  transform-origin: top right;
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--border-light);
+  min-width: 220px; /* Slightly wider to accommodate padding */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.3s ease;
+  z-index: 100;
+  
+  /* --- NEW STYLES START --- */
+  padding: 10px; /* Adds space inside the container so buttons don't touch edges */
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* Adds the space between "View Profile" and "Logout" */
+  /* --- NEW STYLES END --- */
 }
 
 .profile-menu.active {
-  display: block;
-  animation: fadeInScale 0.3s ease forwards;
-}
-
-@keyframes fadeInScale {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(-5px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
 }
 
 .profile-menu-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 18px;
-  width: 100%;
-  border: none;
-  background: none;
+  padding: 12px 20px;
+  text-decoration: none;
   color: var(--text-primary);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 14px;
-  text-align: left;
-  border-bottom: 1px solid var(--border-light);
+  transition: all 0.3s ease;
+  
+  /* --- NEW STYLES START --- */
+  border: 1px solid var(--border-light); /* Full border instead of just bottom */
+  border-radius: 8px; /* Rounds the corners of the buttons */
+  background: var(--bg-secondary); /* Optional: Gives them a slight contrast from container */
+  /* --- NEW STYLES END --- */
 }
 
-.profile-menu-item:last-child {
-  border-bottom: none;
-}
+/* Removed the :last-child border-bottom: none rule as it is no longer needed */
 
 .profile-menu-item:hover {
-  background: var(--accent-light);
-  color: var(--accent-primary);
-  transform: translateX(3px);
+  background: var(--accent-primary); /* Keeps your hover effect */
+  color: white;
+  border-color: var(--accent-primary);
+  transform: translateY(-2px); /* Adds a little pop on hover */
 }
 
 .profile-menu-item i {
-  width: 18px;
-  text-align: center;
+  margin-right: 12px;
   font-size: 16px;
-  color: var(--text-secondary);
-  transition: color 0.2s ease;
-}
-
-.profile-menu-item:hover i {
-  color: var(--accent-primary);
+  width: 20px;
+  text-align: center;
 }
 
 /* ----------------------------------- */
@@ -298,30 +257,62 @@
 
 /* Detail Item List Styling (Grid Layout) */
 .detail-item {
+  /* Layout: 135px for Label, remaining space for Value */
   display: grid;
-  grid-template-columns: 1fr auto; 
-  gap: 20px;
-  align-items: center;
-  padding: 15px 0;
-  border-bottom: 1px dashed var(--border-light);
-}
-
-.detail-item:last-child {
-  border-bottom: none;
+  grid-template-columns: 135px minmax(0, 1fr); 
+  gap: 10px;
+  align-items: center; 
+  
+  /* Spacing between rows */
+  margin-bottom: 12px; 
+  
+  /* UNIFIED GREY CONTAINER (Applied to the whole row) */
+  background-color: var(--bg-secondary); 
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 12px 15px; /* Padding encompasses both label and value */
+  width: 100%; /* Forces the container to fill the drawer width */
 }
 
 .detail-label {
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: left;
+  white-space: nowrap; 
+  background: transparent;
 }
 
 .detail-value {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
   color: var(--text-primary);
-  word-break: break-word;
-  text-align: right;
+  text-align: left;
+  
+  /* REMOVE previous box styling from the value itself */
+  background-color: transparent; 
+  border: none;
+  padding: 0;
+  min-height: auto;
+  
+  /* Content Handling */
+  width: 100%; 
+  white-space: nowrap; /* Keeps text on one line */
+  overflow-x: auto; /* Allows scrolling for long IDs/Emails */
+  scrollbar-width: none; 
+  -ms-overflow-style: none;
+}
+
+/* Hide scrollbar for Chrome/Safari */
+.detail-value::-webkit-scrollbar {
+  display: none;
+}
+
+/* Ensure the last item keeps the card styling */
+.detail-item:last-child {
+  border-bottom: 1px solid var(--border-light);
 }
 
 /* Role Badge in Drawer */

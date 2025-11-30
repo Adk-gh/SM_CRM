@@ -25,15 +25,6 @@ const ISSUE_CATEGORIES = [
     { value: 'website_error', label: 'E-commerce Website Error', icon: '🌐' }
 ];
 
-const RELEVANT_CATEGORIES = [
-    'billing', 
-    'transaction', 
-    'fulfillment', 
-    'stock_issue', 
-    'order_status', 
-    'website_error'
-];
-
 // =======================================
 // MOCK AUTH HOOK
 // =======================================
@@ -159,7 +150,7 @@ const SupportTickets = () => {
         }, 5000);
     };
 
-    // --- UPDATED: Bulk Forward All Tickets ---
+    // --- Bulk Forward All Tickets ---
     const handleBulkForwardAll = async () => {
         if (!isAdmin || !user) {
             showAlertMessage('Permission denied. Must be logged in as staff.', 'danger');
@@ -184,17 +175,8 @@ const SupportTickets = () => {
 
             const result = await response.json();
             
-            // Debug logging
-            console.log('API Response:', result);
-            console.log('Forwarded tickets:', result.forwarded);
-            
             if (result.forwarded && result.forwarded.length > 0) {
                 showAlertMessage(`Successfully forwarded ${result.forwarded.length} tickets to external systems!`, 'success');
-                
-                // Log each ticket result for debugging
-                result.forwarded.forEach(item => {
-                    console.log(`Ticket ${item.ticketId || item.ticketid}: ${item.status}`);
-                });
                 
                 // Update local ticket statuses based on the result
                 const updatedTickets = tickets.map(ticket => {
@@ -202,7 +184,6 @@ const SupportTickets = () => {
                         item.ticketid === ticket.id || item.ticketId === ticket.id
                     );
                     if (ticketResult) {
-                        console.log(`Checking ticket ${ticket.id}:`, ticketResult.status);
                         if (ticketResult.status.toLowerCase().includes('forwarded') || 
                             ticketResult.status.toLowerCase().includes('success')) {
                             return {
@@ -212,7 +193,6 @@ const SupportTickets = () => {
                             };
                         } else if (ticketResult.status.toLowerCase().includes('already forwarded') ||
                                    ticketResult.status.toLowerCase().includes('skipped')) {
-                            // Don't change status if already forwarded
                             return ticket;
                         } else {
                             return {
@@ -227,8 +207,6 @@ const SupportTickets = () => {
                 });
                 
                 setTickets(updatedTickets);
-                
-                // Also update Firestore with the new statuses
                 await updateFirestoreTickets(result.forwarded);
                 
             } else {
@@ -243,7 +221,6 @@ const SupportTickets = () => {
         }
     };
 
-    // Helper function to update Firestore with forwarding status
     const updateFirestoreTickets = async (forwardedResults) => {
         try {
             for (const result of forwardedResults) {
@@ -259,7 +236,6 @@ const SupportTickets = () => {
                     });
                 } else if (result.status.toLowerCase().includes('already forwarded') ||
                            result.status.toLowerCase().includes('skipped')) {
-                    // Skip updating if already forwarded
                     continue;
                 } else {
                     await updateDoc(ticketRef, {
@@ -272,71 +248,6 @@ const SupportTickets = () => {
             }
         } catch (error) {
             console.error('Error updating Firestore tickets:', error);
-        }
-    };
-
-    // --- Individual Ticket Forwarding ---
-    const handleNotifySystem = async (ticket) => {
-        if (!isAdmin || !user) {
-            showAlertMessage('Permission denied. Must be logged in as staff.', 'danger');
-            return;
-        }
-
-        if (ticket.posNotificationStatus === 'sent') {
-             showAlertMessage('Notification has already been sent. Skipping API call.', 'info');
-             return;
-        }
-
-        try {
-            setLoading(true);
-            showAlertMessage(`Forwarding ticket to external system...`, 'info');
-
-            // Since your API forwards all tickets, we'll call it and then check the specific result
-            const response = await fetch(FORWARD_ALL_API_URL, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const result = await response.json();
-            
-            // Find if our specific ticket was forwarded
-            const ticketResult = result.forwarded?.find(item => item.ticketId === ticket.id);
-            
-            const ticketRef = doc(db, 'supportTickets', ticket.id);
-            const statusUpdate = {};
-
-            if (ticketResult && ticketResult.status.includes('forwarded')) {
-                statusUpdate.posNotificationStatus = 'sent'; 
-                statusUpdate.posNotificationLog = serverTimestamp();
-                showAlertMessage(`Successfully forwarded ticket to external system!`, 'success');
-            } else {
-                statusUpdate.posNotificationStatus = 'failed';
-                statusUpdate.posNotificationLog = serverTimestamp();
-                showAlertMessage(`Failed to forward ticket. System response: ${ticketResult?.status}`, 'danger');
-            }
-            
-            await updateDoc(ticketRef, { ...statusUpdate, updatedAt: serverTimestamp() });
-
-            // Update local state
-            setTickets(prevTickets => 
-                prevTickets.map(t => 
-                  t.id === ticket.id ? { ...t, ...statusUpdate } : t
-                )
-            );
-            
-            setSelectedTicket(prev => prev ? { ...prev, ...statusUpdate } : null);
-
-        } catch (error) {
-            console.error('Notification failed:', error);
-            showAlertMessage(`Failed to forward ticket. Error: ${error.message}`, 'danger');
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -441,7 +352,7 @@ const SupportTickets = () => {
             {/* Dashboards and Stats */}
             {(isAdmin && !authLoading) && (
                 <div className="charts-section">
-                    <div className="chart-card">
+                    <div className="chart-card" style={{ width: '100%' }}>
                         <h3>Ticket Overview</h3>
                         <div className="chart-container open-tickets-chart">
                             <div className="bar high" style={{height: `${(stats.open / Math.max(stats.total, 1)) * 100}%`}}>
@@ -456,24 +367,7 @@ const SupportTickets = () => {
                             <div>Forwarded: {stats.forwarded}</div>
                         </div>
                     </div>
-
-                    {/* Bulk Forward Button */}
-                    <div className="chart-card">
-                        <h3>External Systems</h3>
-                        <div className="bulk-actions">
-                            <button 
-                                className="btn btn-primary" 
-                                onClick={handleBulkForwardAll}
-                                disabled={bulkForwardLoading || tickets.length === 0}
-                            >
-                                <i className={`fas ${bulkForwardLoading ? 'fa-spinner fa-spin' : 'fa-paper-plane'}`}></i>
-                                {bulkForwardLoading ? ' Forwarding All...' : ' Forward All Tickets'}
-                            </button>
-                            <p style={{ fontSize: '0.8rem', marginTop: '10px', color: 'var(--text-secondary)' }}>
-                                Forward all relevant tickets to external systems
-                            </p>
-                        </div>
-                    </div>
+                    {/* External Systems Card REMOVED */}
                 </div>
             )}
 
@@ -482,6 +376,18 @@ const SupportTickets = () => {
                     <h3>All Support Tickets ({tickets.length})</h3>
                     {isAdmin && (
                         <div className="header-actions">
+                            {/* MOVED FORWARD BUTTON HERE */}
+                            <button 
+                                className="action-btn" 
+                                style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}
+                                onClick={handleBulkForwardAll}
+                                disabled={bulkForwardLoading || tickets.length === 0}
+                            >
+                                <i className={`fas ${bulkForwardLoading ? 'fa-spinner fa-spin' : 'fa-paper-plane'}`}></i>
+                                {bulkForwardLoading ? ' Forwarding...' : ' Forward All'}
+                            </button>
+
+                            {/* REFRESH BUTTON */}
                             <button className="action-btn btn-secondary" onClick={fetchTickets} disabled={loading || authLoading}>
                                 <i className={`fas ${loading ? 'fa-spinner fa-spin' : 'fa-sync'}`}></i> 
                                 {loading ? ' Refreshing...' : ' Refresh'}

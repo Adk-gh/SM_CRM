@@ -1,3 +1,4 @@
+/* ... (Keep your :root and [data-theme] variables as they are) ... */
 :root {
   /* Light Theme */
   --bg-primary: #E9ECEE;
@@ -83,219 +84,11 @@ body {
   transform: scale(1.1);
 }
 
-/* ===== Dashboard Layout ===== */
-.dashboard {
-  display: flex;
-  min-height: 100vh;
-}
-
-/* ===== Professional Sidebar ===== */
-.sidebar {
-  width: 280px;
-  background: var(--bg-sidebar);
-  height: 100vh;
-  position: fixed;
-  padding: 30px 20px;
-  display: flex;
-  flex-direction: column;
-  z-index: 100;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
-}
-
-.sidebar-header {
-  padding: 0 0 30px 0;
-  margin-bottom: 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.sidebar-header h1 {
-  font-size: 24px;
-  font-weight: 700;
-  color: white;
-  letter-spacing: 0.5px;
-}
-
-.sidebar-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex: 1;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  padding: 15px 20px;
-  border-radius: 12px;
-  text-decoration: none;
-  color: rgba(255, 255, 255, 0.85);
-  font-weight: 500;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.nav-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  transform: translateX(5px);
-}
-
-.nav-item.active {
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-  border-left: 4px solid var(--accent-secondary);
-}
-
-.nav-item i {
-  margin-right: 15px;
-  font-size: 18px;
-  width: 20px;
-  text-align: center;
-}
-
-.nav-item span {
-  font-size: 15px;
-}
-
-/* ===== Main Content ===== */
-.content {
-  flex: 1;
-  margin-left: 280px;
-  padding: 40px 30px;
-  background: var(--bg-primary);
-  display: flex;
-  flex-direction: column;
-}
-
-/* ===== Dashboard Header ===== */
-.dashboard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
-}
-
-.dashboard-header h2 {
-  font-size: 32px;
-  font-weight: 700;
-  color: var(--text-primary);
-  position: relative;
-}
-
-.dashboard-header h2:after {
-  content: '';
-  position: absolute;
-  bottom: -10px;
-  left: 0;
-  width: 60px;
-  height: 4px;
-  background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
-  border-radius: 2px;
-}
-
-/* ===== User Profile ===== */
-.user-profile {
-  position: relative;
-}
-
-.profile-trigger {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  background: var(--card-bg);
-  padding: 12px 20px;
-  border-radius: 12px;
-  box-shadow: var(--card-shadow);
-  border: 1px solid var(--border-light);
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.profile-trigger:hover {
-  box-shadow: var(--card-hover);
-  transform: translateY(-2px);
-}
-
-.user-avatar {
-  width: 45px;
-  height: 45px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: 600;
-  font-size: 18px;
-}
-
-.user-info h4 {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 2px;
-}
-
-.user-info p {
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.profile-menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 10px;
-  background: var(--card-bg);
-  border-radius: 12px;
-  box-shadow: var(--card-shadow);
-  border: 1px solid var(--border-light);
-  min-width: 200px;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-10px);
-  transition: all 0.3s ease;
-  z-index: 100;
-}
-
-.profile-menu.active {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-}
-
-.profile-menu-item {
-  display: flex;
-  align-items: center;
-  padding: 15px 20px;
-  text-decoration: none;
-  color: var(--text-primary);
-  transition: all 0.3s ease;
-  border-bottom: 1px solid var(--border-light);
-}
-
-.profile-menu-item:last-child {
-  border-bottom: none;
-}
-
-.profile-menu-item:hover {
-  background: var(--bg-secondary);
-  color: var(--accent-primary);
-}
-
-.profile-menu-item i {
-  margin-right: 12px;
-  font-size: 16px;
-  width: 20px;
-  text-align: center;
-}
-
 /* ===== Content Cards ===== */
 .content-card {
   background: var(--card-bg);
   border-radius: 16px;
-  padding: 30px; /* Increased padding */
+  padding: 30px; 
   box-shadow: var(--card-shadow);
   border: 1px solid var(--border-light);
   transition: all 0.3s ease;
@@ -323,6 +116,18 @@ body {
 /* ===== Ticket Table ===== */
 .ticket-table-container {
   margin-bottom: 30px;
+}
+
+.ticket-table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px; 
 }
 
 .ticket-table {
@@ -401,7 +206,8 @@ body {
   background: var(--accent-primary);
   color: white;
   border: none;
-  padding: 8px 16px;
+  padding: 6px 14px;
+  font-size: 13px;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
@@ -409,6 +215,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
 }
 
 .action-btn:hover {
@@ -461,7 +268,6 @@ body {
   gap: 10px;
 }
 
-/* Chart Placeholder Styles */
 .bar {
   width: 15%;
   border-radius: 4px 4px 0 0;
@@ -479,25 +285,26 @@ body {
   color: var(--text-light);
 }
 
-/* ===== Modal ===== */
+/* ===== Modal - FIXES ===== */
 .modal {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
+  width: 100%; 
   height: 100%;
   background-color: rgba(0,0,0,0.5);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
-  display: none; /* Hidden by default */
+  display: none; 
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  /* Use super high z-index to stay above sidebar */
+  z-index: 99999; 
   padding: 20px;
 }
 
 .modal.active {
-  display: flex; /* Centers content when active */
+  display: flex; 
 }
 
 .modal-content {
@@ -505,7 +312,7 @@ body {
   padding: 35px;
   border-radius: 20px;
   width: 100%;
-  max-width: 800px;
+  max-width: 600px;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: var(--card-hover);
@@ -531,11 +338,12 @@ body {
 }
 
 .modal-header h3 {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
+/* FIX: Fixed width and height for the close button so it doesn't stretch */
 .close-modal {
   background: none;
   border: none;
@@ -543,39 +351,58 @@ body {
   color: var(--text-light);
   cursor: pointer;
   transition: all 0.3s ease;
+  width: 40px; /* Fixed width */
+  height: 40px; /* Fixed height for square aspect */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%; /* Optional: makes hover round */
+  flex-shrink: 0; /* Prevent squeezing */
 }
 
 .close-modal:hover {
   color: var(--accent-primary);
+  background-color: var(--bg-secondary); /* Optional: Add background on hover */
   transform: rotate(90deg);
 }
 
+/* ===== Modal Details - Row Layout ===== */
 .ticket-details {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   margin-bottom: 25px;
 }
 
 .detail-item {
   display: flex;
-  flex-direction: column;
-  gap: 5px;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
   background: var(--bg-secondary);
-  padding: 12px;
+  padding: 15px 20px;
   border-radius: 8px;
 }
 
 .detail-label {
-  font-size: 14px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: 700;
 }
 
 .detail-value {
-  font-size: 16px;
+  font-size: 14px;
   color: var(--text-primary);
-  font-weight: 600;
+  font-weight: 500;
+}
+
+.status-value-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
 }
 
 .suggestions-section {
@@ -583,10 +410,10 @@ body {
 }
 
 .suggestions-section h4 {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 15px;
+  margin-bottom: 10px;
 }
 
 .reply-section {
@@ -655,20 +482,6 @@ textarea:focus {
   background: var(--border-light);
 }
 
-.btn-tertiary {
-  background: var(--warning-color);
-  color: white;
-}
-
-.btn-tertiary:hover {
-  opacity: 0.9;
-}
-
-.btn-tertiary:disabled {
-  background: #cbd5e1;
-  cursor: not-allowed;
-}
-
 /* ===== Custom Message Box ===== */
 .custom-message-box {
   padding: 12px 20px;
@@ -719,6 +532,17 @@ textarea:focus {
   .modal-actions {
     flex-direction: column;
   }
+  
+  .ticket-table-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 15px;
+  }
+  
+  .header-actions {
+      width: 100%;
+      justify-content: space-between;
+  }
 }
 
 @media (max-width: 480px) {
@@ -728,5 +552,14 @@ textarea:focus {
   
   .content-card {
     padding: 20px;
+  }
+  
+  .header-actions {
+      flex-direction: column;
+  }
+  
+  .action-btn {
+      width: 100%;
+      justify-content: center;
   }
 }
