@@ -189,8 +189,10 @@ const SupportTickets = () => {
                 
                 // Update local ticket statuses based on the result
                 const updatedTickets = tickets.map(ticket => {
-                    const ticketResult = result.forwarded.find(item => item.ticketId === ticket.id);
-                    if (ticketResult && ticketResult.status.includes('forwarded')) {
+                    const ticketResult = result.forwarded.find(item => 
+                        item.ticketid === ticket.id || item.ticketId === ticket.id
+                    );
+                    if (ticketResult && ticketResult.status.toLowerCase().includes('forwarded')) {
                         return {
                             ...ticket,
                             posNotificationStatus: 'sent',
@@ -221,8 +223,9 @@ const SupportTickets = () => {
     const updateFirestoreTickets = async (forwardedResults) => {
         try {
             for (const result of forwardedResults) {
-                if (result.status.includes('forwarded')) {
-                    const ticketRef = doc(db, 'supportTickets', result.ticketId);
+                if (result.status.toLowerCase().includes('forwarded')) {
+                    const ticketId = result.ticketid || result.ticketId;
+                    const ticketRef = doc(db, 'supportTickets', ticketId);
                     await updateDoc(ticketRef, {
                         posNotificationStatus: 'sent',
                         posNotificationLog: serverTimestamp(),

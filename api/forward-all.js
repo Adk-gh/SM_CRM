@@ -25,7 +25,7 @@ module.exports = async (req, res) => {
   try {
     const snapshot = await db.collection('supportTickets').get();
     if (snapshot.empty) {
-      return res.status(200).json({ message: 'No tickets found.' });
+      return res.status(200).json({ message: 'No tickets found.', forwarded: [] });
     }
 
     const results = [];
@@ -46,25 +46,45 @@ module.exports = async (req, res) => {
             : 'GENERAL_SUPPORT'
       };
 
-      const response = await fetch(
-        "https://spobwqqaskuhcmyeklgk.supabase.co/functions/v1/ticket",
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(posPayload)
-        }
-      );
+      try {
+        const response = await fetch(
+          "https://spobwqqaskuhcmyeklgk.supabase.co/functions/v1/ticket",
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(posPayload)
+          }
+        );
 
-      const result = await response.json();
-      results.push({
-        ticketid: doc.id,
-        status: response.ok ? 'Forwarded successfully' : `Failed: ${result.error || response.status}`
-      });
+        const result = await response.json();
+        
+        results.push({
+          ticketId: doc.id, // Changed to camelCase for consistency
+          status: response.ok 
+            ? 'forwarded successfully' // Changed to lowercase
+            : `Failed: ${result.error || response.status}`,
+          category: ticket.issueCategory,
+          response: result
+        });
+      } catch (fetchError) {
+        results.push({
+          ticketId: doc.id,
+          status: `Failed: ${fetchError.message}`,
+          category: ticket.issueCategory
+        });
+      }
     }
 
-    return res.status(200).json({ forwarded: results });
+    return res.status(200).json({ 
+      message: `Processed ${results.length} tickets`,
+      forwarded: results 
+    });
   } catch (e) {
     console.error('Bulk Forward Error:', e.message);
-    return res.status(500).json({ message: 'Failed to forward tickets', error: e.message });
+    return res.status(500).json({ 
+      message: 'Failed to forward tickets', 
+      error: e.message,
+      forwarded: []
+    });
   }
 };
