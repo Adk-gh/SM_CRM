@@ -1,3 +1,4 @@
+// sm-crm-app/api/reviews.js
 const fetch = require('node-fetch');
 const admin = require('firebase-admin');
 
@@ -21,11 +22,27 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 
 module.exports = async (req, res) => {
-  // --- CORS ---
+  // -------------------------------------------------------------------
+  // 🔑 START CORS FIX
+  // -------------------------------------------------------------------
+  
+  // 1. Set the specific allowed origin (your React dev server)
   res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+  
+  // 2. Set the allowed methods
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  
+  // 3. Set the allowed request headers
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // Handle preflight requests (OPTIONS method)
+  if (req.method === 'OPTIONS') {
+    // Browser checks permissions, send back OK status
+    return res.status(200).end();
+  }
+  // -------------------------------------------------------------------
+  // 🔑 END CORS FIX
+  // -------------------------------------------------------------------
 
   if (req.method !== 'GET') {
     return res.status(405).json({ message: 'Method Not Allowed' });
@@ -35,16 +52,17 @@ module.exports = async (req, res) => {
     const targetEmail = req.query.email;
 
     // 🔎 Call Shopping API for reviews
-    const shoppingReviewUrl = targetEmail
-      ? `${process.env.SHOPPING_API_URLS}?email=${encodeURIComponent(targetEmail)}`
-      : process.env.SHOPPING_API_URLS;
-
-    const response = await fetch(shoppingReviewUrl, {
-      headers: {
-        'Authorization': `Bearer ${process.env.CRM_API_KEY}`,
-        'Content-Type': 'application/json'
+    const response = await fetch(
+      targetEmail
+        ? `${process.env.SHOPPING_API_URLS}?email=${encodeURIComponent(targetEmail)}`
+        : `${process.env.SHOPPING_API_URLS}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.CRM_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
       }
-    });
+    );
 
     if (!response.ok) {
       const errorDetails = await response.text();
