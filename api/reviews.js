@@ -21,19 +21,11 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 
 module.exports = async (req, res) => {
-  // -------------------------------------------------------------------
-  // 🔑 START CORS FIX
-  // -------------------------------------------------------------------
+  // --- CORS ---
   res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  // -------------------------------------------------------------------
-  // 🔑 END CORS FIX
-  // -------------------------------------------------------------------
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method !== 'GET') {
     return res.status(405).json({ message: 'Method Not Allowed' });
@@ -44,8 +36,8 @@ module.exports = async (req, res) => {
 
     // 🔎 Call Shopping API for reviews
     const shoppingReviewUrl = targetEmail
-      ? `${process.env.SHOPPING_API_URL.replace('customer','review')}?email=${encodeURIComponent(targetEmail)}`
-      : `${process.env.SHOPPING_API_URL.replace('customer','review')}`;
+      ? `${process.env.SHOPPING_API_URLS}?email=${encodeURIComponent(targetEmail)}`
+      : process.env.SHOPPING_API_URLS;
 
     const response = await fetch(shoppingReviewUrl, {
       headers: {
@@ -61,7 +53,7 @@ module.exports = async (req, res) => {
 
     const data = await response.json();
 
-    // 💾 Save to CRM DB (create/update reviews collection)
+    // 💾 Save to CRM DB (reviews collection)
     for (const review of data.reviews) {
       const docId = review.id || `${review.userId}_${Date.now()}`;
       await db.collection('reviews').doc(docId).set(review, { merge: true });
