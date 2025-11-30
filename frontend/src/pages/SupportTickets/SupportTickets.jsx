@@ -184,20 +184,40 @@ const SupportTickets = () => {
 
             const result = await response.json();
             
+            // Debug logging
+            console.log('API Response:', result);
+            console.log('Forwarded tickets:', result.forwarded);
+            
             if (result.forwarded && result.forwarded.length > 0) {
                 showAlertMessage(`Successfully forwarded ${result.forwarded.length} tickets to external systems!`, 'success');
+                
+                // Log each ticket result for debugging
+                result.forwarded.forEach(item => {
+                    console.log(`Ticket ${item.ticketId || item.ticketid}: ${item.status}`);
+                });
                 
                 // Update local ticket statuses based on the result
                 const updatedTickets = tickets.map(ticket => {
                     const ticketResult = result.forwarded.find(item => 
                         item.ticketid === ticket.id || item.ticketId === ticket.id
                     );
-                    if (ticketResult && ticketResult.status.toLowerCase().includes('forwarded')) {
-                        return {
-                            ...ticket,
-                            posNotificationStatus: 'sent',
-                            posNotificationLog: new Date()
-                        };
+                    if (ticketResult) {
+                        console.log(`Checking ticket ${ticket.id}:`, ticketResult.status);
+                        if (ticketResult.status.toLowerCase().includes('forwarded') || 
+                            ticketResult.status.toLowerCase().includes('success')) {
+                            return {
+                                ...ticket,
+                                posNotificationStatus: 'sent',
+                                posNotificationLog: new Date()
+                            };
+                        } else {
+                            return {
+                                ...ticket,
+                                posNotificationStatus: 'failed',
+                                posNotificationLog: new Date(),
+                                posNotificationError: ticketResult.status
+                            };
+                        }
                     }
                     return ticket;
                 });
@@ -223,12 +243,21 @@ const SupportTickets = () => {
     const updateFirestoreTickets = async (forwardedResults) => {
         try {
             for (const result of forwardedResults) {
-                if (result.status.toLowerCase().includes('forwarded')) {
-                    const ticketId = result.ticketid || result.ticketId;
-                    const ticketRef = doc(db, 'supportTickets', ticketId);
+                const ticketId = result.ticketid || result.ticketId;
+                const ticketRef = doc(db, 'supportTickets', ticketId);
+                
+                if (result.status.toLowerCase().includes('forwarded') || 
+                    result.status.toLowerCase().includes('success')) {
                     await updateDoc(ticketRef, {
                         posNotificationStatus: 'sent',
                         posNotificationLog: serverTimestamp(),
+                        updatedAt: serverTimestamp()
+                    });
+                } else {
+                    await updateDoc(ticketRef, {
+                        posNotificationStatus: 'failed',
+                        posNotificationLog: serverTimestamp(),
+                        posNotificationError: result.status,
                         updatedAt: serverTimestamp()
                     });
                 }
@@ -499,6 +528,11 @@ const SupportTickets = () => {
                                         ) : selectedTicket.posNotificationStatus === 'failed' ? (
                                             <span style={{ color: 'var(--danger-color)', fontWeight: 'bold' }}>
                                                 <i className="fas fa-exclamation-triangle"></i> Failed
+                                                {selectedTicket.posNotificationError && (
+                                                    <div style={{ fontSize: '0.8rem', marginTop: '5px' }}>
+                                                        Error: {selectedTicket.posNotificationError}
+                                                    </div>
+                                                )}
                                             </span>
                                         ) : (
                                             <span style={{ color: 'var(--text-secondary)' }}>Not Sent</span>
