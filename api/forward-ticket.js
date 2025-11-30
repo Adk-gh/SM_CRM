@@ -1,5 +1,3 @@
-// backend/api/forward-ticket.js
-
 // Ensure 'node-fetch' is installed if using Node < 18: npm install node-fetch
 const fetch = require('node-fetch'); 
 require('dotenv').config(); 
@@ -9,8 +7,8 @@ const POS_API_URL = process.env.POS_API_URL;
 const POS_API_KEY = process.env.POS_API_KEY;
 const INV_API_URL = process.env.INV_API_URL;
 const INV_API_KEY = process.env.INV_API_KEY;
-const ECOMM_API_URL = process.env.SHOPPING_API_URL;
-const ECOMM_API_KEY = process.env.SHOPPING_API_KEY;
+const ONLINESHOPPING_API_URL = process.env.SHOPPING_API_URL;
+const ONLINESHOPPING_API_KEY = process.env.SHOPPING_API_KEY;
 
 /**
  * Helper function to securely call an external REST API.
@@ -64,7 +62,7 @@ module.exports = async (req, res) => {
     const results = {};
 
     try {
-        // 3. ROUTING LOGIC: Switch on the targetSystem code (pos, inventory, ecomm)
+        // 3. ROUTING LOGIC: Switch on the targetSystem code (pos, inventory, onlineshopping)
         switch (targetSystem) {
             case 'pos':
                 // POS System Integration
@@ -78,10 +76,10 @@ module.exports = async (req, res) => {
                 results.inventory = await forwardRequest(INV_API_URL, invPayload, INV_API_KEY);
                 break;
                 
-            case 'ecomm':
-                // E-commerce Platform Integration
-                const ecommPayload = { ...basePayload, severity: 'IMMEDIATE_ATTENTION' };
-                results.ecomm = await forwardRequest(ECOMM_API_URL, ecommPayload, ECOMM_API_KEY);
+            case 'onlineshopping':
+                // Online Shopping Platform Integration
+                const osPayload = { ...basePayload, severity: 'IMMEDIATE_ATTENTION' };
+                results.onlineshopping = await forwardRequest(ONLINESHOPPING_API_URL, osPayload, ONLINESHOPPING_API_KEY);
                 break;
 
             default:
