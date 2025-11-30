@@ -55,16 +55,14 @@ module.exports = async (req, res) => {
   try {
     switch (issueCategory.toLowerCase()) {
       case 'billing':
-        // ✅ Forward to POS Supabase Edge Function
+        // ✅ Forward to POS Supabase Edge Function with exact DB schema
         const posPayload = {
-          ticketId,
-          subject: issueTitle,            // required by POS
-          description: issueDescription,  // required by POS
-          requesterEmail: userEmail,      // required by POS
-          issue_category: 'billing',
-          severity: 'IMMEDIATE_ATTENTION',
-          status: 'open',
-          createdAt: new Date().toISOString()
+          ticketid: ticketId,               // ✅ exact field name
+          description: issueDescription,    // ✅ exact field name
+          issue_category: 'billing',        // ✅ exact field name
+          requestemail: userEmail,          // ✅ exact field name
+          severity: 'IMMEDIATE_ATTENTION',  // ✅ exact field name
+          task: 'CUSTOMER_REFUND_ALERT'     // ✅ exact field name
         };
 
         const posResponse = await fetch(POS_FUNCTION_URL, {
