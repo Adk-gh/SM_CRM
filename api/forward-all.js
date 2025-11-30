@@ -1,4 +1,3 @@
-// sm-crm-app/api/forward-all.js
 const fetch = require('node-fetch');
 const admin = require('firebase-admin');
 
@@ -34,23 +33,37 @@ module.exports = async (req, res) => {
     const results = [];
     for (const doc of snapshot.docs) {
       const ticket = doc.data();
-      const payload = {
-        ticketId: doc.id,
-        issueTitle: ticket.issueTitle,
-        issueDescription: ticket.issueDescription,
-        userEmail: ticket.userEmail,
-        issueCategory: ticket.issueCategory
+
+      // ✅ Build payload with exact field names your Supabase function expects
+      const posPayload = {
+        ticketid: doc.id,
+        subject: ticket.issueTitle ?? null,
+        description: ticket.issueDescription ?? null,
+        issue_category: ticket.issueCategory ?? null,
+        requesteremail: ticket.userEmail ?? null,
+        severity: 'IMMEDIATE_ATTENTION',
+        task: ticket.issueCategory === 'billing'
+          ? 'CUSTOMER_REFUND_ALERT'
+          : ticket.issueCategory === 'stock_issue'
+            ? 'VERIFY_STOCK'
+            : 'GENERAL_SUPPORT'
       };
 
-      // Call your existing forward-ticket endpoint
-      const response = await fetch(`${process.env.CRM_BASE_URL}/api/forward-ticket`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      // ✅ Send directly to Supabase Edge Function
+      const response = await fetch(
+        'https://spobwqqaskuhcmyeklgk.supabase.co/functions/v1/ticket',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(posPayload)
+        }
+      );
 
       const result = await response.json();
-      results.push({ ticketId: doc.id, status: result.message });
+      results.push({
+        ticketid: doc.id,
+        status: response.ok ? 'Forwarded successfully' : `Failed: ${result.error || response.status}`
+      });
     }
 
     return res.status(200).json({ forwarded: results });
