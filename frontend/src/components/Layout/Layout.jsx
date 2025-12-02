@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { signOut, updateEmail, updatePassword } from 'firebase/auth'; // Added Auth update functions
+import { signOut, updateEmail, updatePassword } from 'firebase/auth'; 
 import { auth, db } from '../../../firebase'; 
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import Sidebar from '../Sidebar/Sidebar'; 
@@ -439,7 +439,8 @@ body {
 }
 `;
 
-const Layout = ({ navigation, userRole }) => {
+// 1. ADD notificationCount to Props
+const Layout = ({ navigation, userRole, notificationCount }) => {
   const [theme, setTheme] = useState(localStorage.getItem('sm-theme') || 'light');
   const [user, setUser] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -530,12 +531,28 @@ const Layout = ({ navigation, userRole }) => {
     localStorage.setItem('sm-theme', theme);
   }, [theme]);
 
+  // --- UPDATED LOGOUT FUNCTION ---
   const confirmLogout = async () => {
     try {
+      if (auth.currentUser) {
+        // Set is2FAPending to true in Firestore BEFORE signing out
+        const userRef = doc(db, 'users', auth.currentUser.uid);
+        
+        await updateDoc(userRef, {
+          is2FAPending: true
+        });
+        
+        console.log('2FA Pending status reset.');
+      }
+      
       await signOut(auth);
       navigate('/login');
+      
     } catch (error) {
       console.error('Error signing out:', error);
+      // Fallback: Logout anyway
+      await signOut(auth);
+      navigate('/login');
     } finally {
       setShowLogoutConfirmation(false);
     }
@@ -696,8 +713,12 @@ const Layout = ({ navigation, userRole }) => {
       )}
 
       <div className="dashboard">
-        {/* SIDEBAR */}
-        <Sidebar navigation={sidebarNavigation} userRole={user?.role} />
+        {/* 2. PASS notificationCount TO SIDEBAR */}
+        <Sidebar 
+            navigation={sidebarNavigation} 
+            userRole={user?.role} 
+            notificationCount={notificationCount} 
+        />
 
         {/* MAIN CONTENT */}
         <div className="content">
@@ -714,7 +735,7 @@ const Layout = ({ navigation, userRole }) => {
                         <div className="user-avatar">{user?.avatar}</div>
                         <div className="user-info">
                             <h4>{user?.name}</h4>
-                            <p>{user?.position}</p>
+                            <p>{user?.role}</p>
                         </div>
                         <ChevronDown size={16} color="var(--text-secondary)" />
                     </div>

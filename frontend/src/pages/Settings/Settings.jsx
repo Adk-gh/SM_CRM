@@ -2,8 +2,22 @@ import React, { useEffect, useReducer, useCallback } from 'react';
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../../firebase';
 
+// --- ROLE CONFIGURATION ---
+// Centralized definition for labels and unique color mapping
+const ROLE_DEFINITIONS = {
+  admin: { label: 'Admin', colorClass: 'bg-[var(--color-admin)]' },
+  Payroll_Admin: { label: 'Payroll Admin', colorClass: 'bg-[var(--color-payroll)]' },
+  HRMIS_Admin: { label: 'HRMIS Admin', colorClass: 'bg-[var(--color-hrmis)]' },
+  Inventory_Manager: { label: 'Inventory Manager', colorClass: 'bg-[var(--color-inventory)]' },
+  Warehouse_Operator: { label: 'Warehouse Operator', colorClass: 'bg-[var(--color-warehouse)]' },
+  POS_Support: { label: 'POS Support', colorClass: 'bg-[var(--color-pos)]' },
+  OnlineShopping_Support: { label: 'Online Support', colorClass: 'bg-[var(--color-online)]' },
+  user: { label: 'User', colorClass: 'bg-[var(--color-user)]' }, // Standard User Role
+  // Fallback
+  default: { label: 'User', colorClass: 'bg-[var(--color-user)]' }
+};
+
 // --- CSS Variable Definitions (Theme Engine) ---
-// Defines custom colors so Tailwind can use them via var()
 const ThemeStyles = () => (
   <style>{`
     :root {
@@ -20,32 +34,40 @@ const ThemeStyles = () => (
       --card-bg: #FFFFFF;
       --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
       
-      /* Status Colors */
-      --color-admin: #F56565;
-      --color-manager: #ED8936;
-      --color-analyst: #48BB78;
-      --color-sales: #6E9FC1;
+      /* --- UNIQUE ROLE COLORS (Light Mode) --- */
+      --color-admin: #F56565;      /* Red */
+      --color-payroll: #9F7AEA;    /* Purple */
+      --color-hrmis: #ED64A6;      /* Pink */
+      --color-inventory: #ED8936;  /* Orange */
+      --color-warehouse: #38B2AC;  /* Teal */
+      --color-pos: #4299E1;        /* Blue */
+      --color-online: #667EEA;     /* Indigo */
+      --color-user: #718096;       /* Gray (Default) */
     }
 
     [data-theme="dark"] {
-      /* Dark Theme - MATCHED TO SCREENSHOTS */
-      --bg-primary: #1E2A38;      /* Deep Navy/Grey Background */
-      --bg-secondary: #2C3E50;    /* Slightly lighter for inputs/secondary areas */
-      --text-primary: #E9ECEE;    /* Light text */
-      --text-secondary: #A3CAE9;  /* Muted blue text */
-      --text-light: #94A3B8;      /* Grey text */
-      --accent-primary: #68D391;  /* Green Accent */
-      --accent-secondary: #63B3ED; /* Blue Accent */
+      /* Dark Theme */
+      --bg-primary: #1E2A38;
+      --bg-secondary: #2C3E50;
+      --text-primary: #E9ECEE;
+      --text-secondary: #A3CAE9;
+      --text-light: #94A3B8;
+      --accent-primary: #68D391;
+      --accent-secondary: #63B3ED;
       --accent-light: #4299E1;
-      --border-light: #4A5568;    /* Dark border color */
-      --card-bg: #2C3E50;         /* Card background matches secondary bg */
+      --border-light: #4A5568;
+      --card-bg: #2C3E50;
       --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
       
-      /* Status Colors Dark */
-      --color-admin: #E53E3E;
-      --color-manager: #DD6B20;
-      --color-analyst: #38A169;
-      --color-sales: #4FC3F7;
+      /* --- UNIQUE ROLE COLORS (Dark Mode - Lighter/Vibrant) --- */
+      --color-admin: #FC8181;      /* Light Red */
+      --color-payroll: #D6BCFA;    /* Light Purple */
+      --color-hrmis: #F687B3;      /* Light Pink */
+      --color-inventory: #F6AD55;  /* Light Orange */
+      --color-warehouse: #4FD1C5;  /* Light Teal */
+      --color-pos: #63B3ED;        /* Light Blue */
+      --color-online: #7F9CF5;     /* Light Indigo */
+      --color-user: #A0AEC0;       /* Light Gray */
     }
 
     /* Custom Animations */
@@ -95,7 +117,7 @@ const Toast = ({ message, type, onClose }) => {
   if (!message) return null;
 
   const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
-  const bgColor = type === 'success' ? 'bg-[var(--color-analyst)]' : 'bg-[var(--color-admin)]';
+  const bgColor = type === 'success' ? 'bg-[var(--color-warehouse)]' : 'bg-[var(--color-admin)]';
 
   return (
     <div 
@@ -112,17 +134,15 @@ const Toast = ({ message, type, onClose }) => {
 // --- User Item Component ---
 
 const UserItem = React.memo(({ user, onRoleUpdate, generateAvatar, formatDate, isUpdating }) => {
-  const getRoleBadgeColor = (role) => {
-    const r = role || 'support';
-    switch(r) {
-      case 'admin': return 'bg-[var(--color-admin)]';
-      case 'manager': return 'bg-[var(--color-manager)]';
-      case 'analyst': return 'bg-[var(--color-analyst)]';
-      case 'sales': 
-      case 'support': return 'bg-[var(--color-sales)]';
-      default: return 'bg-[var(--color-sales)]';
-    }
+  
+  // Helper to get definition safely
+  const getRoleDef = (roleKey) => {
+      // If role exists in definitions, return it. Otherwise return 'default' (User)
+      return ROLE_DEFINITIONS[roleKey] || ROLE_DEFINITIONS.default;
   };
+
+  const currentRole = user.role || 'user';
+  const roleDef = getRoleDef(currentRole);
 
   return (
     <div 
@@ -156,7 +176,7 @@ const UserItem = React.memo(({ user, onRoleUpdate, generateAvatar, formatDate, i
         <div className="text-xs text-[var(--text-light)] mt-2">
           Joined: {formatDate(user.createdAt)}
           {user.profileCompleted && (
-            <span className="bg-[var(--color-analyst)] text-white px-1.5 py-0.5 rounded text-[9px] font-semibold ml-2 align-middle">
+            <span className="bg-[var(--color-warehouse)] text-white px-1.5 py-0.5 rounded text-[9px] font-semibold ml-2 align-middle">
               ✓ Profile Complete
             </span>
           )}
@@ -165,19 +185,24 @@ const UserItem = React.memo(({ user, onRoleUpdate, generateAvatar, formatDate, i
 
       {/* Role Action Section */}
       <div className="flex items-center justify-between w-full md:w-auto mt-4 md:mt-0 gap-2.5 shrink-0">
-        <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold text-center w-20 text-white ${getRoleBadgeColor(user.role)}`}>
-          {(user.role || 'support').charAt(0).toUpperCase() + (user.role || 'support').slice(1)}
+        {/* Role Badge */}
+        <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold text-center w-auto min-w-[80px] text-white ${roleDef.colorClass} shadow-sm`}>
+          {roleDef.label}
         </span>
+
+        {/* Role Select Dropdown */}
         <select 
-          className="w-[120px] p-2 rounded-md border border-[var(--border-light)] bg-[var(--bg-secondary)] text-[var(--text-primary)] text-xs cursor-pointer focus:border-[var(--accent-primary)] outline-none"
-          value={user.role || 'support'}
+          className="w-[160px] p-2 rounded-md border border-[var(--border-light)] bg-[var(--bg-secondary)] text-[var(--text-primary)] text-xs cursor-pointer focus:border-[var(--accent-primary)] outline-none"
+          value={currentRole}
           onChange={(e) => onRoleUpdate(user.id, e.target.value)}
           disabled={isUpdating(user.id)}
         >
-          <option value="admin">Admin</option>
-          <option value="manager">Manager</option>
-          <option value="analyst">Analyst</option>
-          <option value="sales">Sales/Support</option>
+          {/* Map through the ROLE_DEFINITIONS keys to create options */}
+          {Object.entries(ROLE_DEFINITIONS)
+            .filter(([key]) => key !== 'default') // Don't show the fallback key
+            .map(([key, def]) => (
+            <option key={key} value={key}>{def.label}</option>
+          ))}
         </select>
       </div>
     </div>
@@ -193,14 +218,20 @@ const RolesSection = ({ state, dispatch, updateUserRole }) => {
   // Filter users
   const filteredUsers = users.filter(user => {
     const searchLower = searchTerm.toLowerCase();
-    const role = user.role || 'sales';
+    const role = user.role || 'user'; // Default to user for filtering
+    
+    // Check if role matches filter (or if filter is 'all')
+    const matchesRole = roleFilter === 'all' || role === roleFilter;
+
+    // Search logic
     const matchesSearch = 
       user.fullName?.toLowerCase().includes(searchLower) || 
       user.email?.toLowerCase().includes(searchLower) ||
       user.branch?.toLowerCase().includes(searchLower) ||
       user.department?.toLowerCase().includes(searchLower) ||
-      role.includes(searchLower);
-    const matchesRole = roleFilter === 'all' || role === roleFilter;
+      role.toLowerCase().includes(searchLower) ||
+      ROLE_DEFINITIONS[role]?.label.toLowerCase().includes(searchLower); // Allow searching by readable role name
+
     return matchesSearch && matchesRole;
   });
 
@@ -216,7 +247,7 @@ const RolesSection = ({ state, dispatch, updateUserRole }) => {
           <input 
             type="text" 
             className="w-full pl-10 pr-4 py-3 rounded-lg border border-[var(--border-light)] text-sm bg-[var(--bg-secondary)] text-[var(--text-primary)] transition-all focus:border-[var(--accent-primary)] outline-none"
-            placeholder="Search users by name, email, branch..." 
+            placeholder="Search users by name, email..." 
             value={searchTerm}
             onChange={(e) => dispatch({ type: 'SET_SEARCH_TERM', payload: e.target.value })}
           />
@@ -224,7 +255,7 @@ const RolesSection = ({ state, dispatch, updateUserRole }) => {
         
         <div className="w-full md:w-auto">
           <select 
-            className="w-full md:w-[180px] h-[45px] bg-[var(--bg-secondary)] border border-[var(--border-light)] rounded-lg text-[var(--text-primary)] appearance-none outline-none text-sm pl-4 pr-10 cursor-pointer focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[rgba(57,90,127,0.1)]"
+            className="w-full md:w-[220px] h-[45px] bg-[var(--bg-secondary)] border border-[var(--border-light)] rounded-lg text-[var(--text-primary)] appearance-none outline-none text-sm pl-4 pr-10 cursor-pointer focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[rgba(57,90,127,0.1)]"
             value={roleFilter} 
             onChange={(e) => dispatch({ type: 'SET_ROLE_FILTER', payload: e.target.value })}
             style={{
@@ -234,11 +265,12 @@ const RolesSection = ({ state, dispatch, updateUserRole }) => {
               backgroundSize: '10px'
             }}
           >
-            <option value="all">All Roles</option>
-            <option value="admin">Admin</option>
-            <option value="manager">Manager</option>
-            <option value="analyst">Analyst</option>
-            <option value="sales">Sales/Support</option>
+            <option value="all">Filter by Role (All)</option>
+            {Object.entries(ROLE_DEFINITIONS)
+              .filter(([key]) => key !== 'default')
+              .map(([key, def]) => (
+                <option key={key} value={key}>{def.label}</option>
+            ))}
           </select>
         </div>
       </div>
@@ -441,7 +473,7 @@ const Settings = () => {
                     <option>Disabled</option>
                 </select>
               </div>
-              <button className="w-full py-3 px-6 border-none rounded-lg font-semibold cursor-pointer flex items-center justify-center gap-2 text-white bg-[var(--color-manager)] text-sm transition-all hover:opacity-90">
+              <button className="w-full py-3 px-6 border-none rounded-lg font-semibold cursor-pointer flex items-center justify-center gap-2 text-white bg-[var(--color-inventory)] text-sm transition-all hover:opacity-90">
                   Update Security
               </button>
             </div>
@@ -470,7 +502,7 @@ const Settings = () => {
                 <option>Monthly</option>
             </select>
           </div>
-          <button className="w-full py-3 px-6 border-none rounded-lg font-semibold cursor-pointer flex items-center justify-center gap-2 text-white bg-[var(--color-analyst)] text-sm transition-all hover:opacity-90">
+          <button className="w-full py-3 px-6 border-none rounded-lg font-semibold cursor-pointer flex items-center justify-center gap-2 text-white bg-[var(--color-warehouse)] text-sm transition-all hover:opacity-90">
             Save Configuration
           </button>
         </div>
@@ -493,10 +525,6 @@ const Settings = () => {
         onClose={() => dispatch({ type: 'CLEAR_TOAST' })}
       />
       
-      {/* LAYOUT FIX:
-        ml-0 md:ml-[280px]: Pushes content right to clear the fixed sidebar on desktop.
-        p-[20px]: Matches Dashboard padding (tighter gap).
-      */}
       <div className="ml-0 md:ml-[0x] p-[20px] transition-all duration-300">
         
         {/* Container constrained to 1400px to match Dashboard width, margin set to 0 to align left */}
