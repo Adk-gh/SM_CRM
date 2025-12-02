@@ -1,772 +1,881 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import ReactDOM from 'react-dom';
 import { collection, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../firebase'; 
 import emailjs from '@emailjs/browser'; 
 import { 
-Loader2, 
-RefreshCw, 
-Eye, 
-Send, 
-CheckCircle, 
-AlertTriangle, 
-X, 
-Laptop,
-CreditCard,
-Lock,
-Sparkles,
-Bug,
-HelpCircle,
-Banknote,
-Package,
-ShoppingBag,
-Globe,
-BarChart3,
-AlertCircle,
-    Paperclip // Added Paperclip icon for attachments
+  Loader2, 
+  RefreshCw, 
+  Eye, 
+  Send, 
+  CheckCircle, 
+  AlertTriangle, 
+  X, 
+  Laptop,
+  CreditCard,
+  Lock,
+  Sparkles,
+  Bug,
+  HelpCircle,
+  Banknote,
+  Package,
+  ShoppingBag,
+  Globe,
+  Briefcase,
+  FileText,
+  User,
+  Calendar,
+  Building2,
+  Clock,
+  TrendingUp,
+  Timer,
+  ChevronLeft,
+  ChevronRight,
+  BarChart3,
+  CheckSquare,
+  Search, // Added Search Icon
+  Filter  // Added Filter Icon
 } from 'lucide-react';
 
 // =======================================
-// API CONSTANTS
+// CONFIGURATION & CONSTANTS
 // =======================================
-const FORWARD_ALL_API_URL = 'https://sm-crm-rho.vercel.app/api/forward-all';
+
+const EMAIL_FORWARD_SERVICE_ID = "service_vg58qh8"; 
+const EMAIL_FORWARD_TEMPLATE_ID = "template_9lluwnr"; 
+const EMAIL_FORWARD_PUBLIC_KEY = "6XU-uQ7Og0d4oAykV"; 
+
+const EMAIL_RESOLVE_SERVICE_ID = "service_e6osrqk"; 
+const EMAIL_RESOLVE_TEMPLATE_ID = "template_9f0b21p"; 
+const EMAIL_RESOLVE_PUBLIC_KEY = "pdnrkVk1D1DXJmS5c"; 
+
+const PRIORITIES = ['High', 'Medium', 'Low'];
+
+const DEPARTMENTS = [
+  'POS', 
+  'Online Shopping', 
+  'Payroll', 
+  'HRMIS', 
+  'Inventory', 
+  'Warehouse'
+];
+
+const SLA_LIMITS = {
+  High: 72,    // 3 Days
+  Medium: 96,  // 4 Days
+  Low: 168     // 7 Days
+};
 
 // =======================================
-// EMAILJS CONFIGURATION
+// SMART ROUTING MAP
 // =======================================
-const EMAIL_SERVICE_ID = "service_vg58qh8"; 
-const EMAIL_TEMPLATE_ID = "template_9lluwnr"; 
-const EMAIL_PUBLIC_KEY = "6XU-uQ7Og0d4oAykV"; 
+const CATEGORY_DEPT_MAP = {
+  'transaction': 'POS',
+  'bug': 'POS', 
+  'technical': 'POS',
+  'billing': 'Online Shopping',
+  'feature': 'Online Shopping',
+  'order_status': 'Online Shopping',
+  'website_error': 'Online Shopping',
+  'stock_issue': 'Inventory',
+  'fulfillment': 'Warehouse',
+  'access': 'HRMIS',
+  'general': 'HRMIS', 
+  'payroll': 'Payroll' 
+};
 
-// =======================================
-// SYSTEM & CATEGORY MAPPING
-// =======================================
 const ISSUE_CATEGORIES = [
- { value: 'technical', label: 'Technical Issue', icon: Laptop, color: '#3B82F6' },
- { value: 'billing', label: 'Billing & Payments', icon: CreditCard, color: '#10B981' },
- { value: 'access', label: 'Account Access', icon: Lock, color: '#F59E0B' },
- { value: 'feature', label: 'Feature Request', icon: Sparkles, color: '#8B5CF6' },
- { value: 'bug', label: 'Report a Bug', icon: Bug, color: '#EF4444' },
- { value: 'general', label: 'General Inquiry', icon: HelpCircle, color: '#6B7280' },
- { value: 'transaction', label: 'Transaction Error', icon: Banknote, color: '#EC4899' },
- { value: 'fulfillment', label: 'Fulfillment', icon: Package, color: '#F97316' },
- { value: 'stock_issue', label: 'Stock Issue', icon: Package, color: '#14B8A6' },
- { value: 'order_status', label: 'Order Status', icon: ShoppingBag, color: '#6366F1' },
- { value: 'website_error', label: 'Website Error', icon: Globe, color: '#D946EF' }
+  { value: 'technical', label: 'Technical Issue', icon: Laptop, color: '#3B82F6' },
+  { value: 'billing', label: 'Billing & Payments', icon: CreditCard, color: '#10B981' },
+  { value: 'access', label: 'Account Access', icon: Lock, color: '#F59E0B' },
+  { value: 'feature', label: 'Feature Request', icon: Sparkles, color: '#8B5CF6' },
+  { value: 'bug', label: 'Report a Bug', icon: Bug, color: '#EF4444' },
+  { value: 'general', label: 'General Inquiry', icon: HelpCircle, color: '#6B7280' },
+  { value: 'transaction', label: 'Transaction Error', icon: Banknote, color: '#EC4899' },
+  { value: 'fulfillment', label: 'Fulfillment', icon: Package, color: '#F97316' },
+  { value: 'stock_issue', label: 'Stock Issue', icon: Package, color: '#14B8A6' },
+  { value: 'order_status', label: 'Order Status', icon: ShoppingBag, color: '#6366F1' },
+  { value: 'website_error', label: 'Website Error', icon: Globe, color: '#D946EF' },
+  { value: 'payroll', label: 'Payroll Issue', icon: Banknote, color: '#059669' } 
 ];
 
 // =======================================
-// PRIORITY ANALYSIS SCRIPT
-// =======================================
-const analyzePriority = (subject, description) => {
- const text = `${subject || ''} ${description || ''}`.toLowerCase();
- const criticalKeywords = [
-  'emergency', 'critical', 'scam', 'fraud', 'lawsuit', 'stolen', 'critical', 'manager', 
-  'demand', 'resolve immediately', 'refund', 'urgent', 'impossible'
- ];
- if (criticalKeywords.some(word => text.includes(word))) { return 'High'; }
-
- let score = 0;
- const highImpact = ['broken', 'failed', 'crash', 'dead', 'unusable', 'malfunction', 'corrupted', 'angry', 'furious'];
- const mediumImpact = ['terrible', 'horrible', 'slow', 'buggy', 'unreliable', 'rude', 'incompetent', 'expensive'];
- const lowImpact = ['sucks', 'annoying', 'meh', 'weird', 'confusing', 'sluggish'];
-
- highImpact.forEach(w => { if (text.includes(w)) score += 3; });
- mediumImpact.forEach(w => { if (text.includes(w)) score += 2; });
- lowImpact.forEach(w => { if (text.includes(w)) score += 1; });
-
- if (score >= 5) return 'High';
- if (score >= 2) return 'Medium';
- return 'Low';
-};
-
-// =======================================
-// CSS STYLES (Embedded)
+// CSS STYLES
 // =======================================
 const styles = `
-:root {
---bg-primary: #E9ECEE;
---bg-secondary: #F4F4F4;
---bg-sidebar: linear-gradient(135deg, #395A7F, #6E9FC1);
---text-primary: #395A7F;
---text-secondary: #6E9FC1;
---text-light: #7A7A7A;
---accent-primary: #395A7F;
---accent-secondary: #6E9FC1;
---accent-light: #A3CAE9;
---border-light: #D1D5DB;
---card-bg: #FFFFFF;
---card-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
---card-hover: 0 10px 25px rgba(0, 0, 0, 0.12);
---success-color: #48BB78;
---warning-color: #F6AD55;
---danger-color: #F56565;
---info-color: #4299E1;
-}
+  :root {
+    --bg-primary: #E9ECEE;
+    --bg-secondary: #F4F4F4;
+    --text-primary: #395A7F;
+    --text-secondary: #6E9FC1;
+    --accent-primary: #395A7F;
+    --accent-secondary: #6E9FC1;
+    --card-bg: #FFFFFF;
+    --danger-color: #EF4444;
+    --warning-color: #F59E0B;
+    --success-color: #10B981;
+    --info-color: #3B82F6;
+  }
 
-[data-theme="dark"] {
---bg-primary: #1E2A38;
---bg-secondary: #2C3E50;
---bg-sidebar: linear-gradient(135deg, #395A7F, #6E9FC1);
---text-primary: #E9ECEE;
---text-secondary: #A3CAE9;
---text-light: #B0B0B0;
---accent-primary: #68D391;
---accent-secondary: #63B3ED;
---accent-light: #4299E1;
---border-light: #4A5568;
---card-bg: #2C3E50;
---card-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
---card-hover: 0 10px 30px rgba(0, 0, 0, 0.4);
---success-color: #68D391;
---warning-color: #FBD38D;
---danger-color: #FC8181;
---info-color: #63B3ED;
-}
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
 
-* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+  .support-tickets-wrapper {
+    background: var(--bg-primary); min-height: 100vh; padding: 30px;
+    color: var(--text-primary);
+  }
 
-.support-tickets-wrapper {
-background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; line-height: 1.6;
-transition: all 0.3s ease; padding: 30px; width: 100%;
-}
+  /* TABS */
+  .tabs-container { display: flex; gap: 20px; margin-bottom: 25px; border-bottom: 2px solid var(--text-secondary); padding-bottom: 0; }
+  .tab-btn {
+    background: none; border: none; font-size: 16px; font-weight: 600; 
+    color: var(--text-secondary); cursor: pointer; padding: 10px 20px;
+    position: relative; transition: all 0.3s;
+  }
+  .tab-btn.active { color: var(--accent-primary); }
+  .tab-btn.active::after {
+    content: ''; position: absolute; bottom: -2px; left: 0; width: 100%; height: 3px; background: var(--accent-primary);
+  }
+  .tab-count { font-size: 12px; background: var(--bg-secondary); padding: 2px 8px; border-radius: 10px; margin-left: 8px; }
 
-.content-card {
-background: var(--card-bg); border-radius: 16px; padding: 30px; box-shadow: var(--card-shadow);
-border: 1px solid var(--border-light); transition: all 0.3s ease; position: relative; overflow: hidden; margin-bottom: 30px; width: 100%;
-}
-.content-card::before {
-content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
-background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
-}
+  .content-card {
+    background: var(--card-bg); border-radius: 16px; padding: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+  }
 
-.ticket-table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.header-actions { display: flex; gap: 10px; }
-.ticket-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-.ticket-table th { background: var(--bg-secondary); color: var(--text-primary); font-weight: 600; padding: 15px; text-align: left; border-bottom: 2px solid var(--border-light); }
-.ticket-table td { padding: 15px; border-bottom: 1px solid var(--border-light); color: var(--text-primary); }
-.ticket-table tr { transition: all 0.3s ease; cursor: pointer; }
-.ticket-table tr:hover { background: var(--bg-secondary); }
+  .ticket-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+  .ticket-table th { text-align: left; padding: 15px; background: var(--bg-secondary); color: var(--text-primary); }
+  .ticket-table td { padding: 15px; border-bottom: 1px solid #ddd; }
+  .ticket-table tr:hover { background: var(--bg-secondary); cursor: pointer; }
 
-.priority-badge, .status-badge { padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; text-align: center; min-width: 80px; }
-.priority-high { background: rgba(245, 101, 101, 0.2); color: var(--danger-color); border: 1px solid var(--danger-color); }
-.priority-medium { background: rgba(246, 173, 85, 0.2); color: var(--warning-color); border: 1px solid var(--warning-color); }
-.priority-low { background: rgba(66, 153, 225, 0.2); color: var(--info-color); border: 1px solid var(--info-color); }
-.status-open { background: rgba(246, 173, 85, 0.2); color: var(--warning-color); border: 1px solid var(--warning-color); }
-.status-resolved { background: rgba(72, 187, 120, 0.2); color: var(--success-color); border: 1px solid var(--success-color); }
+  .ticket-row-danger {
+    box-shadow: inset 3px 0 0 var(--danger-color);
+    background-color: rgba(239, 68, 68, 0.05);
+  }
 
-.action-btn { background: var(--accent-primary); color: white; border: none; padding: 6px 14px; font-size: 13px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
-.action-btn:hover { background: var(--accent-secondary); transform: translateY(-2px); }
-.action-btn:disabled { background: var(--text-light); cursor: not-allowed; transform: none; }
-.btn-secondary { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-light); }
-.btn-secondary:hover { background: var(--border-light); }
+  .priority-badge { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .priority-high { color: var(--danger-color); border: 1px solid var(--danger-color); background: rgba(239,68,68,0.1); }
+  .priority-medium { color: var(--warning-color); border: 1px solid var(--warning-color); background: rgba(245,158,11,0.1); }
+  .priority-low { color: var(--info-color); border: 1px solid var(--info-color); background: rgba(59,130,246,0.1); }
+  .priority-na { color: var(--text-secondary); border: 1px solid var(--text-secondary); }
 
-.charts-section { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px; margin-top: 30px; margin-bottom: 30px; width: 100%; }
-.chart-card { background: var(--card-bg); border-radius: 16px; padding: 25px; box-shadow: var(--card-shadow); border: 1px solid var(--border-light); height: 350px; display: flex; flex-direction: column; }
-.chart-card h3 { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: var(--text-primary); display: flex; align-items: center; gap: 10px; }
-.chart-container { flex: 1; position: relative; display: flex; align-items: flex-end; gap: 10px; padding-bottom: 10px; }
+  .action-btn { background: var(--accent-primary); color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .action-btn:hover { opacity: 0.9; }
 
-.bar { width: 15%; border-radius: 4px 4px 0 0; background: var(--accent-secondary); transition: height 0.5s ease; position: relative; }
-.bar-label { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); font-size: 12px; color: var(--text-light); white-space: nowrap; }
+  /* Modal Styles */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); }
+  .modal-content { background: var(--card-bg); padding: 30px; border-radius: 16px; width: 700px; max-width: 90%; max-height: 90vh; overflow-y: auto; animation: popIn 0.3s ease; }
+  
+  .form-group { margin-bottom: 20px; }
+  .form-group label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; }
+  .form-select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: var(--bg-secondary); color: var(--text-primary); transition: border 0.3s; }
+  .form-select:focus { outline: none; border-color: var(--accent-primary); }
 
-.category-list { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; height: 100%; padding-right: 10px; }
-.category-row { display: flex; align-items: center; gap: 15px; }
-.category-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: var(--bg-secondary); color: var(--text-primary); }
-.category-info { flex: 1; }
-.category-header { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 13px; font-weight: 600; color: var(--text-primary); }
-.progress-track { width: 100%; height: 6px; background: var(--bg-secondary); border-radius: 10px; overflow: hidden; }
-.progress-fill { height: 100%; border-radius: 10px; transition: width 0.5s ease; }
+  .ticket-summary-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 25px; }
+  .summary-row { display: flex; gap: 20px; margin-bottom: 10px; }
+  .summary-col { flex: 1; }
+  .summary-label { font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 4px; }
+  .summary-val { font-size: 14px; color: #334155; font-weight: 500; }
+  .description-box { background: white; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; line-height: 1.5; max-height: 150px; overflow-y: auto; color: #475569; }
 
-.modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 99999; padding: 20px; }
-.modal-content { background: var(--card-bg); padding: 35px; border-radius: 20px; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: var(--card-hover); border: 1px solid var(--border-light); position: relative; animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-@keyframes modalPop { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border-light); }
-.close-modal { background: none; border: none; color: var(--text-light); cursor: pointer; transition: all 0.3s ease; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%; flex-shrink: 0; }
-.close-modal:hover { color: var(--accent-primary); background-color: var(--bg-secondary); transform: rotate(90deg); }
+  .attachment-grid { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  .attachment-img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; transition: transform 0.2s; }
 
-.ticket-details { display: flex; flex-direction: column; gap: 12px; margin-bottom: 25px; }
-.detail-item { display: flex; flex-direction: row; justify-content: space-between; align-items: center; background: var(--bg-secondary); padding: 15px 20px; border-radius: 8px; }
-.detail-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); font-weight: 700; }
-.detail-value { font-size: 14px; color: var(--text-primary); font-weight: 500; }
-.status-value-wrapper { display: flex; align-items: center; gap: 8px; font-weight: 600; }
-.reply-section label { display: block; font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 10px; }
-textarea { width: 100%; height: 120px; padding: 15px; border-radius: 8px; border: 1px solid var(--border-light); background: var(--bg-secondary); color: var(--text-primary); font-size: 14px; resize: none; transition: all 0.3s ease; }
-textarea:focus { outline: none; border-color: var(--accent-primary); box-shadow: 0 0 0 3px rgba(57, 90, 127, 0.1); }
-.modal-actions { display: flex; justify-content: flex-end; gap: 15px; }
-.btn { padding: 12px 25px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; border: none; font-size: 16px; }
-.btn-primary { background: var(--accent-primary); color: white; }
-.btn-primary:hover { background: var(--accent-secondary); }
-.btn-secondary { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-light); }
-.btn-secondary:hover { background: var(--border-light); }
+  .status-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #e2e8f0; }
+  
+  /* ANALYTICS STYLES */
+  .analytics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+  
+  .stat-card { background: var(--card-bg); padding: 25px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; height: 100%; display: flex; flex-direction: column; }
+  .stat-title { font-size: 13px; color: #718096; font-weight: 700; text-transform: uppercase; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
 
-.attachment-container { margin-top: 20px; padding: 15px; border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-secondary); }
-.attachment-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px; margin-top: 15px; }
-.attachment-img { width: 100%; height: 100px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 2px solid var(--border-light); transition: border-color 0.2s ease; }
-.attachment-img:hover { border-color: var(--accent-secondary); }
+  /* CAROUSEL CARD */
+  .carousel-card { 
+    position: relative; 
+    border-top: 4px solid var(--warning-color); 
+    display: flex; 
+    flex-direction: column; 
+    justify-content: space-between;
+  }
+  .carousel-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
+  .carousel-label { font-size: 12px; color: #718096; font-weight: 700; text-transform: uppercase; }
+  .carousel-dept-name { font-size: 14px; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px; }
+  .carousel-body { display: flex; align-items: center; gap: 15px; margin-bottom: 5px; }
+  .time-icon-wrapper { background: #fdf6e7; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--warning-color); flex-shrink: 0; }
+  .carousel-value-lg { font-size: 36px; font-weight: 800; color: #2d3748; line-height: 1; }
+  .carousel-unit { font-size: 16px; color: #a0aec0; font-weight: 500; margin-left: 2px; }
+  .carousel-desc { font-size: 13px; color: #a0aec0; margin-top: 8px; }
+  .carousel-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+  .nav-btn { background: transparent; border: 1px solid #e2e8f0; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-secondary); transition: all 0.2s; }
+  .nav-btn:hover { background: var(--bg-secondary); color: var(--accent-primary); border-color: var(--accent-primary); }
 
-.custom-message-box { padding: 12px 20px; border-radius: 8px; color: white; margin-bottom: 20px; font-weight: 500; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); animation: slideIn 0.3s ease-out; }
-@keyframes slideIn { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-@media (max-width: 768px) { .support-tickets-wrapper { padding: 20px; } .ticket-table { display: block; overflow-x: auto; } .header-actions { width: 100%; justify-content: space-between; } .ticket-table-header { flex-direction: column; align-items: flex-start; gap: 15px; } .charts-section { grid-template-columns: 1fr; } }
+  /* Chart Styles */
+  .chart-row { display: flex; align-items: center; margin-bottom: 12px; font-size: 13px; }
+  .chart-label { width: 110px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #4a5568; }
+  .chart-bar-bg { flex: 1; height: 8px; background: #edf2f7; border-radius: 4px; overflow: hidden; margin: 0 12px; }
+  .chart-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+  .chart-value { width: 35px; text-align: right; font-weight: 600; color: #2d3748; }
+  
+  /* SLA PROGRESS BAR STYLE */
+  .sla-container { width: 140px; }
+  .sla-header { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; font-weight: 600; }
+  .sla-bar-bg { width: 100%; height: 6px; background: #e5e7eb; border-radius: 10px; overflow: hidden; }
+  .sla-bar-fill { height: 100%; transition: width 1s linear; }
+  .sla-footer { font-size: 10px; color: #9ca3af; margin-top: 2px; }
+  .ticking-clock { font-variant-numeric: tabular-nums; }
+
+  /* SEARCH & FILTER BAR */
+  .toolbar { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-bottom: 15px; }
+  .search-wrapper { position: relative; }
+  .search-input { padding: 8px 12px 8px 35px; border-radius: 8px; border: 1px solid #ddd; font-size: 13px; width: 250px; outline: none; transition: border-color 0.2s; color: var(--text-primary); }
+  .search-input:focus { border-color: var(--accent-primary); }
+  .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
+  
+  .filter-wrapper { position: relative; }
+  .filter-select { padding: 8px 12px 8px 35px; border-radius: 8px; border: 1px solid #ddd; font-size: 13px; outline: none; cursor: pointer; color: var(--text-primary); appearance: none; background: white; padding-right: 30px; }
+  .filter-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
+
+  @media (max-width: 1024px) {
+    .analytics-grid { grid-template-columns: 1fr; }
+    .toolbar { flex-direction: column; align-items: stretch; }
+    .search-input { width: 100%; }
+  }
+
+  .custom-alert { position: fixed; top: 20px; right: 20px; padding: 15px 25px; border-radius: 8px; color: white; font-weight: 500; animation: slideIn 0.3s; z-index: 2000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+  @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
 `;
 
 // =======================================
-// MOCK AUTH HOOK
+// REAL-TIME SLA COUNTDOWN COMPONENT
 // =======================================
-const useMockAuth = () => {
- const [user, setUser] = useState(null);
- const [loading, setLoading] = useState(true);
+const SLACountdown = ({ ticket }) => {
+    const [timeLeft, setTimeLeft] = useState({ 
+        percent: 0, 
+        text: '--', 
+        color: '#10B981', 
+        isOverdue: false 
+    });
 
- const getIdToken = async () => 'mock-firebase-id-token-12345';
+    useEffect(() => {
+        if (!ticket.forwardedAt) return;
 
- useEffect(() => {
-  const simulatedAdmin = {
-   uid: 'admin123',
-   email: 'admin@example.com',
-   role: 'admin', 
-   getIdToken: getIdToken, 
-  };
-  setTimeout(() => {
-   setUser(simulatedAdmin);
-   setLoading(false);
-  }, 500); 
- }, []);
+        const interval = setInterval(() => {
+            const start = ticket.forwardedAt.toDate ? ticket.forwardedAt.toDate() : new Date(ticket.forwardedAt);
+            const limitHours = SLA_LIMITS[ticket.priority] || 168; // Default 7 days
+            const limitMs = limitHours * 60 * 60 * 1000;
+            const deadline = new Date(start.getTime() + limitMs);
+            const now = new Date();
+            
+            const remainingMs = deadline - now;
+            const elapsedMs = now - start;
+            
+            // Calculate Percentage Used
+            let percent = (elapsedMs / limitMs) * 100;
+            percent = Math.min(Math.max(percent, 0), 100); // Clamp between 0-100
 
- const isAdmin = user && (user.role === 'admin' || user.role === 'marketing');
- return { user, loading, isAdmin };
+            // Formatting Text (HH:mm:ss)
+            const absMs = Math.abs(remainingMs);
+            const h = Math.floor(absMs / (1000 * 60 * 60));
+            const m = Math.floor((absMs % (1000 * 60 * 60)) / (1000 * 60));
+            const s = Math.floor((absMs % (1000 * 60)) / 1000);
+            
+            const timeString = `${h}h ${m}m ${s}s`;
+            const isOverdue = remainingMs < 0;
+
+            // Determine Color
+            let color = '#10B981'; // Green
+            if (isOverdue) color = '#EF4444'; // Red
+            else if (percent > 75) color = '#F59E0B'; // Orange
+
+            setTimeLeft({
+                percent: isOverdue ? 100 : percent,
+                text: timeString,
+                color: color,
+                isOverdue: isOverdue
+            });
+
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [ticket]);
+
+    if (!ticket.forwardedAt) return <span style={{color:'#ccc'}}>--</span>;
+
+    return (
+        <div className="sla-container">
+            <div className="sla-header" style={{color: timeLeft.color}}>
+                <span>{timeLeft.isOverdue ? 'Overdue' : 'Remaining'}</span>
+                <span className="ticking-clock">{timeLeft.text}</span>
+            </div>
+            <div className="sla-bar-bg">
+                <div 
+                    className="sla-bar-fill" 
+                    style={{
+                        width: `${timeLeft.percent}%`, 
+                        background: timeLeft.color
+                    }}
+                ></div>
+            </div>
+            <div className="sla-footer">Limit: {SLA_LIMITS[ticket.priority] || 168}h</div>
+        </div>
+    );
 };
 
 // =======================================
-// EMAIL HELPER FUNCTION
+// MOCK AUTH
 // =======================================
-const sendResolutionEmail = async (ticket, replyText) => {
- // FIX: Prioritize 'email' or 'userEmail' for the recipient's address.
- const recipientEmail = ticket.userEmail || ticket.email; 
-
- if (!recipientEmail || typeof recipientEmail !== 'string' || !recipientEmail.includes('@')) {
-  console.error("Email not found on ticket object or invalid. Cannot send resolution email.", { ticket });
-    // Throw a specific error to catch in submitReply
-    throw new Error("Recipient email address is missing or invalid. Check the 'userEmail' field on the ticket data."); 
- }
-
- const templateParams = {
-    // IMPORTANT: 'to_email' is generally used in EmailJS templates for the recipient. 
-    // If your template uses 'userEmail' or another variable name for the *recipient*, update this key.
-  userEmail: recipientEmail, 
-  userName: ticket.requester || 'Customer',
-  ticket_subject: ticket.subject,
-  issueTitle: ticket.subject,
-  agentReply: replyText,
-  ticket_id: ticket.id ? ticket.id.substring(0, 8) : 'N/A'
- };
-
- try {
-  await emailjs.send(EMAIL_SERVICE_ID, EMAIL_TEMPLATE_ID, templateParams, EMAIL_PUBLIC_KEY);
-  console.log('Resolution email sent successfully via EmailJS.');
- } catch (error) {
-  console.error('EmailJS failed to send resolution:', error);
-    // Re-throw the error so the calling function can report failure
-    throw error; 
- }
+const useMockAuth = () => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    setTimeout(() => {
+      setUser({ uid: 'admin123', email: 'admin@example.com', role: 'admin' });
+      setLoading(false);
+    }, 500);
+  }, []);
+  return { user, loading, isAdmin: user?.role === 'admin' };
 };
 
 const SupportTickets = () => {
- const { user, loading: authLoading, isAdmin } = useMockAuth(); 
- const [modalOpen, setModalOpen] = useState(false);
- const [selectedTicket, setSelectedTicket] = useState(null);
- const [replyText, setReplyText] = useState('');
- const [showAlert, setShowAlert] = useState(false);
- const [alertMessage, setAlertMessage] = useState('');
- const [alertType, setAlertType] = useState('success');
- const [tickets, setTickets] = useState([]);
- const [loading, setLoading] = useState(true); 
- const [bulkForwardLoading, setBulkForwardLoading] = useState(false);
+  const { isAdmin } = useMockAuth();
+  
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('New'); 
+  
+  // State for Filters & Search
+  const [searchQuery, setSearchQuery] = useState('');
+  const [deptFilter, setDeptFilter] = useState('All');
 
- // --- Data Fetching ---
- useEffect(() => {
-  if (authLoading) return;
-  if (isAdmin) {
-   fetchTickets();
-  } else {
-   setLoading(false);
-   if (user) showAlertMessage('Access Denied: Insufficient privileges.', 'danger');
-  }
- }, [isAdmin, authLoading, user]); 
+  // Modals
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [forwardModalOpen, setForwardModalOpen] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  
+  const [targetDept, setTargetDept] = useState('');
+  const [targetPriority, setTargetPriority] = useState('');
+  const [isForwarding, setIsForwarding] = useState(false);
 
- const fetchTickets = async () => {
-  try {
-   setLoading(true);
-   const querySnapshot = await getDocs(collection(db, 'supportTickets'));
-   const ticketsData = [];
-   
-   querySnapshot.forEach((doc) => {
-    const data = doc.data();
-    const categoryMatch = ISSUE_CATEGORIES.find(cat => cat.value === data.issueCategory);
-    
-    // AUTOMATIC PRIORITY CALCULATION
-    const calculatedPriority = analyzePriority(data.issueTitle, data.issueDescription);
-        
-        // Mock/Placeholder for Attachment URL for demonstration
+  // Carousel State
+  const [carouselIndex, setCarouselIndex] = useState(0);
+
+  const [replyText, setReplyText] = useState('');
+  const [alert, setAlert] = useState(null);
+
+  useEffect(() => {
+    fetchTickets();
+  }, [isAdmin]);
+
+  const showAlert = (msg, type = 'success') => {
+    setAlert({ msg, type });
+    setTimeout(() => setAlert(null), 4000);
+  };
+
+  const fetchTickets = async () => {
+    if (!isAdmin) return;
+    setLoading(true);
+    try {
+      const querySnapshot = await getDocs(collection(db, 'supportTickets'));
+      const ticketsData = [];
+      
+      querySnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
         const attachments = (data.attachments || []).map(att => ({
             ...att,
-            // FIX: Switched to a more stable placeholder service (placeholder.com)
             attachmentURL: att.type.startsWith('image/') 
-                ? `https://via.placeholder.com/150?text=Attachment+${att.fileName || 'Image'}`
-                           : null, 
+                ? `https://via.placeholder.com/150?text=${att.fileName || 'Img'}`
+                : null, 
         }));
 
-    ticketsData.push({
-     id: doc.id,
-     ...data,
-          attachments, // Include the enhanced attachments array
-          userEmail: data.userEmail || data.email, // Ensure userEmail is explicitly present
-     created: data.createdAt?.toDate?.().toLocaleString() || 'Unknown date',
-     subject: data.issueTitle || 'No Subject',
-     requester: data.userName || 'Unknown User',
-     priority: calculatedPriority, 
-     status: data.status || 'open',
-     description: data.issueDescription || 'No description provided',
-     categoryLabel: categoryMatch?.label || 'General Inquiry',
-     posNotificationStatus: data.posNotificationStatus || null,
-     issueCategory: data.issueCategory || 'general'
-    });
-   });
+        const autoDepartment = data.department || CATEGORY_DEPT_MAP[data.issueCategory] || 'Online Shopping';
+        const catObj = ISSUE_CATEGORIES.find(c => c.value === data.issueCategory);
+        const categoryLabel = catObj ? catObj.label : 'General';
 
-   ticketsData.sort((a, b) => new Date(b.createdAt?.toDate?.()) - new Date(a.createdAt?.toDate?.()));
-   setTickets(ticketsData);
-  } catch (error) {
-   console.error('Error fetching tickets:', error);
-   showAlertMessage('Failed to load tickets.', 'danger');
-  } finally {
-   setLoading(false);
-  }
- };
+        ticketsData.push({
+          id: docSnap.id,
+          ...data,
+          attachments,
+          userEmail: data.userEmail || data.email,
+          created: data.createdAt?.toDate?.().toLocaleString() || 'Unknown',
+          subject: data.issueTitle || 'No Subject',
+          requester: data.userName || 'Unknown',
+          priority: data.priority || 'N/A', 
+          status: data.status || 'open', 
+          department: autoDepartment, 
+          forwardedAt: data.forwardedAt ? data.forwardedAt.toDate() : null,
+          resolvedAt: data.resolvedAt ? data.resolvedAt.toDate() : null,
+          description: data.issueDescription || '',
+          issueCategory: data.issueCategory || 'general',
+          categoryLabel: categoryLabel
+        });
+      });
 
- // --- Stats Calculations ---
- const stats = useMemo(() => {
-  return {
-   open: tickets.filter(t => t.status === 'open').length,
-   resolved: tickets.filter(t => t.status === 'resolved').length,
-   forwarded: tickets.filter(t => t.posNotificationStatus === 'sent').length,
-   total: tickets.length
-  };
- }, [tickets]);
-
- // Top Categories
- const categoryStats = useMemo(() => {
-  const counts = {};
-  tickets.forEach(t => {
-   const cat = t.issueCategory;
-   counts[cat] = (counts[cat] || 0) + 1;
-  });
-
-  return ISSUE_CATEGORIES
-   .map(cat => ({
-    ...cat,
-    count: counts[cat.value] || 0,
-    percentage: tickets.length ? Math.round(((counts[cat.value] || 0) / tickets.length) * 100) : 0
-   }))
-   .sort((a, b) => b.count - a.count)
-   .filter(cat => cat.count > 0); 
- }, [tickets]);
-
- // Priority Breakdown
- const priorityStats = useMemo(() => {
-  const counts = { High: 0, Medium: 0, Low: 0 };
-  tickets.forEach(t => {
-   const p = t.priority || 'Low';
-   if (counts[p] !== undefined) counts[p]++;
-  });
-  const total = tickets.length || 1;
-  return [
-   { label: 'High', count: counts.High, percentage: Math.round((counts.High / total) * 100), color: '#EF4444' }, // Red
-   { label: 'Medium', count: counts.Medium, percentage: Math.round((counts.Medium / total) * 100), color: '#F59E0B' }, // Orange
-   { label: 'Low', count: counts.Low, percentage: Math.round((counts.Low / total) * 100), color: '#3B82F6' } // Blue
-  ];
- }, [tickets]);
-
- // --- Modal Actions ---
- const openModal = (ticketId) => {
-  const ticket = tickets.find(t => t.id === ticketId);
-  setSelectedTicket(ticket);
-  setModalOpen(true);
-  setReplyText(ticket?.agentReply || '');
- };
-
- const closeModal = () => {
-  setModalOpen(false);
-  setSelectedTicket(null);
- };
-
- const showAlertMessage = (message, type) => {
-  setAlertMessage(message);
-  setAlertType(type);
-  setShowAlert(true);
-  setTimeout(() => setShowAlert(false), 5000);
- };
-
- // --- Bulk Forward ---
- const handleBulkForwardAll = async () => {
-  if (!isAdmin || !user) return showAlertMessage('Permission denied.', 'danger');
-  try {
-   setBulkForwardLoading(true);
-   showAlertMessage('Bulk forwarding tickets...', 'info');
-   const response = await fetch(FORWARD_ALL_API_URL, {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json' }
-   });
-   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-   const result = await response.json();
-   
-   if (result.forwarded && result.forwarded.length > 0) {
-    showAlertMessage(`Successfully forwarded ${result.forwarded.length} tickets!`, 'success');
-    const updatedTickets = tickets.map(ticket => {
-     const ticketResult = result.forwarded.find(item => item.ticketid === ticket.id || item.ticketId === ticket.id);
-     if (ticketResult) {
-      const isSuccess = ticketResult.status.toLowerCase().includes('forwarded') || ticketResult.status.toLowerCase().includes('success');
-      const isSkipped = ticketResult.status.toLowerCase().includes('already forwarded') || ticketResult.status.toLowerCase().includes('skipped');
-      if (isSuccess) return { ...ticket, posNotificationStatus: 'sent', posNotificationLog: new Date() };
-      else if (!isSkipped) return { ...ticket, posNotificationStatus: 'failed', posNotificationLog: new Date(), posNotificationError: ticketResult.status };
-     }
-     return ticket;
-    });
-    setTickets(updatedTickets);
-    await updateFirestoreTickets(result.forwarded);
-   } else {
-    showAlertMessage('No tickets were forwarded.', 'info');
-   }
-  } catch (error) {
-   console.error('Bulk forward failed:', error);
-   showAlertMessage(`Bulk forward failed: ${error.message}`, 'danger');
-  } finally {
-   setBulkForwardLoading(false);
-  }
- };
-
- const updateFirestoreTickets = async (forwardedResults) => {
-  try {
-   for (const result of forwardedResults) {
-    const ticketId = result.ticketid || result.ticketId;
-    const ticketRef = doc(db, 'supportTickets', ticketId);
-    const statusLower = result.status.toLowerCase();
-    if (statusLower.includes('forwarded') || statusLower.includes('success')) {
-     await updateDoc(ticketRef, { posNotificationStatus: 'sent', posNotificationLog: serverTimestamp(), updatedAt: serverTimestamp() });
-    } else if (!statusLower.includes('already forwarded') && !statusLower.includes('skipped')) {
-     await updateDoc(ticketRef, { posNotificationStatus: 'failed', posNotificationLog: serverTimestamp(), posNotificationError: result.status, updatedAt: serverTimestamp() });
+      ticketsData.sort((a, b) => new Date(b.created) - new Date(a.created));
+      setTickets(ticketsData);
+    } catch (error) {
+      console.error(error);
+      showAlert('Failed to fetch tickets', 'danger');
+    } finally {
+      setLoading(false);
     }
-   }
-  } catch (error) { console.error('Error updating Firestore:', error); }
- };
+  };
 
-  // --- Core Reply Logic (Email sending error handling included) ---
- const submitReply = async () => {
-  if (replyText.trim() === '') return showAlertMessage('Please enter a response.', 'danger');
-  if (!isAdmin) return showAlertMessage('Permission denied.', 'danger');
-  
-  try {
-   const ticketRef = doc(db, 'supportTickets', selectedTicket.id);
-   
-   // 1. Update Firestore Status
-   await updateDoc(ticketRef, { 
-    status: 'resolved', 
-    agentReply: replyText, 
-    resolvedAt: serverTimestamp(), 
-    updatedAt: serverTimestamp() 
-   });
-      
-      // 2. Send Resolution Email to Customer (Wrapped in its own try/catch)
-      try {
-        await sendResolutionEmail(selectedTicket, replyText);
-        showAlertMessage('Reply sent & ticket resolved! (Email successfully sent to customer)', 'success');
-      } catch (emailError) {
-        // Log and show a warning, but proceed with local state update/modal close
-        console.error('Email failed but Firestore updated:', emailError);
-        showAlertMessage(`Ticket resolved in CRM, but **failed to send email**. Reason: ${emailError.message || 'Check EmailJS config/console.'}`, 'warning');
+  const checkSLAStatus = (ticket) => {
+    if (ticket.status !== 'pending' || !ticket.forwardedAt || ticket.priority === 'N/A') return 'ok';
+    const now = new Date();
+    const diffHours = (now - ticket.forwardedAt) / (1000 * 60 * 60); 
+    const limit = SLA_LIMITS[ticket.priority] || 48; 
+    return diffHours > limit ? 'overdue' : 'ok';
+  };
+
+  const openForwardModal = (ticket) => {
+    setSelectedTicket(ticket);
+    const autoDept = CATEGORY_DEPT_MAP[ticket.issueCategory] || 'Online Shopping';
+    setTargetDept(autoDept);
+    setTargetPriority('Medium');
+    setForwardModalOpen(true);
+  };
+
+  // =======================================
+  // ANALYTICS CALCULATIONS
+  // =======================================
+  const analyticsData = useMemo(() => {
+    if (tickets.length === 0) return null;
+
+    // 1. RESOLVED Volume by Department
+    const deptResolved = {};
+    DEPARTMENTS.forEach(d => deptResolved[d] = 0);
+    tickets.forEach(t => {
+      if(t.department && t.status === 'resolved') {
+        deptResolved[t.department] = (deptResolved[t.department] || 0) + 1;
       }
+    });
 
-
-   // 3. Update Local State & Close Modal
-   setTickets(prev => prev.map(t => t.id === selectedTicket.id ? { ...t, status: 'resolved', agentReply: replyText } : t));
-   closeModal();
-
-  } catch (firestoreError) {
-   console.error('Error updating ticket (Firestore):', firestoreError);
-   showAlertMessage('Failed to update ticket. Check console for details.', 'danger');
-  }
- };
- 
- // --- Render Helpers ---
- const renderPriorityBadge = (p) => <span className={`priority-badge priority-${p.toLowerCase()}`}>{p}</span>;
- const renderStatusBadge = (s) => <span className={`status-badge status-${s.toLowerCase()}`}>{s}</span>;
+    // 2. Average Resolution Time
+    const deptTime = {};
+    DEPARTMENTS.forEach(d => deptTime[d] = { totalHours: 0, count: 0 });
     
-    // Filter attachments that are images and have a URL
-    const imageAttachments = selectedTicket?.attachments?.filter(att => 
-        att.type && att.type.startsWith('image/') && att.attachmentURL
-    ) || [];
+    tickets.forEach(t => {
+      if (t.status === 'resolved' && t.department && t.resolvedAt && t.forwardedAt) {
+        const hours = (t.resolvedAt - t.forwardedAt) / (1000 * 60 * 60);
+        if (deptTime[t.department]) {
+          deptTime[t.department].totalHours += hours;
+          deptTime[t.department].count += 1;
+        }
+      }
+    });
 
- // --- Main JSX ---
- return (
-  <div className="support-tickets-wrapper">
-   {/* INJECTED STYLES */}
-   <style>{styles}</style>
-   
-   {/* Alert Box */}
-   {showAlert && (
-    <div className="custom-message-box" style={{ 
-     backgroundColor: alertType === 'success' ? 'var(--success-color)' : 
-        alertType === 'info' ? 'var(--info-color)' : 'var(--danger-color)' 
-    }}>
-     {alertMessage}
-    </div>
-   )}
+    const avgResolutionTime = {};
+    Object.keys(deptTime).forEach(dept => {
+      const data = deptTime[dept];
+      avgResolutionTime[dept] = data.count > 0 ? (data.totalHours / data.count).toFixed(1) : 0;
+    });
 
-   {(isAdmin && !authLoading) && (
-    <div className="charts-section">
-     
-     {/* CHART 1: OVERVIEW */}
-     <div className="chart-card">
-      <h3><BarChart3 size={20} className="text-accent-primary"/> Ticket Overview</h3>
-      <div className="chart-container">
-       <div className="bar" style={{height: `${(stats.open / Math.max(stats.total, 1)) * 100}%`, background: 'var(--accent-secondary)'}}>
-        <span className="bar-label">Open ({stats.open})</span>
-       </div>
-       <div className="bar" style={{height: `${(stats.resolved / Math.max(stats.total, 1)) * 100}%`, background: 'var(--success-color)'}}>
-        <span className="bar-label">Resolved ({stats.resolved})</span>
-       </div>
-      </div>
-     </div>
+    // 3. Most Common Categories
+    const categoryCounts = {};
+    tickets.forEach(t => {
+      categoryCounts[t.categoryLabel] = (categoryCounts[t.categoryLabel] || 0) + 1;
+    });
+    const topCategories = Object.entries(categoryCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
 
-     {/* CHART 2: CATEGORIES */}
-     <div className="chart-card">
-      <h3><Laptop size={20} className="text-accent-primary"/> Issues by Category</h3>
-      <div className="category-list">
-       {categoryStats.length === 0 ? (
-        <div style={{height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-light)'}}>
-         No ticket data available
+    return { deptResolved, avgResolutionTime, topCategories, totalTickets: tickets.length };
+  }, [tickets]);
+
+  // Carousel Navigation Helpers
+  const nextDept = () => setCarouselIndex((prev) => (prev + 1) % DEPARTMENTS.length);
+  const prevDept = () => setCarouselIndex((prev) => (prev - 1 + DEPARTMENTS.length) % DEPARTMENTS.length);
+
+  const confirmForward = async () => {
+    if (!targetPriority || !targetDept) return showAlert('Please select department and priority', 'warning');
+    setIsForwarding(true);
+    try {
+      const ticketRef = doc(db, 'supportTickets', selectedTicket.id);
+      const templateParams = {
+        userEmail: selectedTicket.userEmail,
+        userName: selectedTicket.requester,
+        issueTitle: selectedTicket.subject,
+        department: targetDept
+      };
+      await emailjs.send(EMAIL_FORWARD_SERVICE_ID, EMAIL_FORWARD_TEMPLATE_ID, templateParams, EMAIL_FORWARD_PUBLIC_KEY);
+      await updateDoc(ticketRef, {
+        status: 'pending',
+        department: targetDept, 
+        priority: targetPriority,
+        forwardedAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      setTickets(prev => prev.map(t => 
+        t.id === selectedTicket.id 
+          ? { ...t, status: 'pending', department: targetDept, priority: targetPriority, forwardedAt: new Date() }
+          : t
+      ));
+      showAlert(`Forwarded to ${targetDept}`, 'success');
+      setForwardModalOpen(false);
+      setSelectedTicket(null);
+    } catch (error) {
+      console.error('Forward error:', error);
+      showAlert('Failed to forward ticket', 'danger');
+    } finally {
+      setIsForwarding(false);
+    }
+  };
+
+  const handleResolve = async () => {
+    if (!replyText) return showAlert('Please enter a resolution note', 'warning');
+    try {
+      const templateParams = {
+        userEmail: selectedTicket.userEmail,
+        userName: selectedTicket.requester,
+        issueTitle: selectedTicket.subject,
+        department: selectedTicket.department,
+        agentReply: replyText
+      };
+      await emailjs.send(EMAIL_RESOLVE_SERVICE_ID, EMAIL_RESOLVE_TEMPLATE_ID, templateParams, EMAIL_RESOLVE_PUBLIC_KEY);
+      const ticketRef = doc(db, 'supportTickets', selectedTicket.id);
+      await updateDoc(ticketRef, {
+        status: 'resolved',
+        agentReply: replyText,
+        resolvedAt: serverTimestamp()
+      });
+      setTickets(prev => prev.map(t => 
+        t.id === selectedTicket.id ? { ...t, status: 'resolved', agentReply: replyText } : t
+      ));
+      showAlert('Ticket resolved successfully', 'success');
+      setDetailsModalOpen(false);
+      setReplyText('');
+    } catch (e) {
+      console.error(e);
+      showAlert('Error resolving ticket', 'danger');
+    }
+  };
+
+  // =======================================
+  // FILTERING LOGIC (Tab -> Dept -> Search)
+  // =======================================
+  const filteredTickets = useMemo(() => {
+    let result = [];
+
+    // 1. Tab Filter
+    if (activeTab === 'New') {
+        result = tickets.filter(t => t.status === 'open' || (t.status === 'pending' && t.priority === 'N/A'));
+    } else if (activeTab === 'Pending') {
+        result = tickets.filter(t => t.status === 'pending' && t.priority !== 'N/A');
+    } else if (activeTab === 'Resolved') {
+        result = tickets.filter(t => t.status === 'resolved');
+    }
+
+    // 2. Department Filter
+    if (deptFilter !== 'All') {
+        result = result.filter(t => t.department === deptFilter);
+    }
+
+    // 3. Search Filter
+    if (searchQuery.trim() !== '') {
+        const query = searchQuery.toLowerCase();
+        result = result.filter(t => 
+            t.subject.toLowerCase().includes(query) || 
+            t.requester.toLowerCase().includes(query) || 
+            t.id.toLowerCase().includes(query)
+        );
+    }
+
+    return result;
+  }, [tickets, activeTab, deptFilter, searchQuery]);
+
+  const renderPriority = (p) => (
+    <span className={`priority-badge priority-${p.toLowerCase().replace('/','')}`}>
+      {p}
+    </span>
+  );
+
+  const TicketSummaryBox = ({ ticket }) => (
+    <div className="ticket-summary-box">
+        <div style={{marginBottom:'10px', display:'flex', alignItems:'center', gap:'10px', flexWrap:'wrap'}}>
+            <h4 style={{margin:0}}>{ticket.subject}</h4>
+            <span style={{fontSize:'12px', background:'#e2e8f0', padding:'2px 8px', borderRadius:'10px', color:'#475569'}}>
+                {ticket.categoryLabel}
+            </span>
         </div>
-       ) : (
-        categoryStats.map((cat, index) => (
-         <div key={index} className="category-row">
-          <div className="category-icon">
-           <cat.icon size={16} color={cat.color} />
-          </div>
-          <div className="category-info">
-           <div className="category-header">
-            <span>{cat.label}</span>
-            <span>{cat.count}</span>
-           </div>
-           <div className="progress-track">
-            <div 
-             className="progress-fill" 
-             style={{ width: `${cat.percentage}%`, background: cat.color }}
-            ></div>
-           </div>
-          </div>
-         </div>
-        ))
-       )}
-      </div>
-     </div>
-
-     {/* CHART 3: PRIORITY BREAKDOWN */}
-     <div className="chart-card">
-      <h3><AlertCircle size={20} className="text-accent-primary"/> Priority Breakdown</h3>
-      <div className="category-list">
-       {tickets.length === 0 ? (
-        <div style={{height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-light)'}}>
-         No ticket data available
+        <div className="summary-row">
+            <div className="summary-col">
+                <div className="summary-label"><User size={10} style={{marginRight:4}}/> Requester</div>
+                <div className="summary-val">{ticket.requester}</div>
+                <div style={{fontSize:'12px', color:'#999'}}>{ticket.userEmail}</div>
+            </div>
+            <div className="summary-col">
+                <div className="summary-label"><Calendar size={10} style={{marginRight:4}}/> Created</div>
+                <div className="summary-val">{ticket.created}</div>
+            </div>
         </div>
-       ) : (
-        priorityStats.map((p, index) => (
-         <div key={index} className="category-row">
-          <div className="category-icon" style={{color: p.color, background: `${p.color}20`}}>
-           <AlertTriangle size={16} />
-          </div>
-          <div className="category-info">
-           <div className="category-header">
-            <span>{p.label} Priority</span>
-            <span>{p.count}</span>
-           </div>
-           <div className="progress-track">
-            <div 
-             className="progress-fill" 
-             style={{ width: `${p.percentage}%`, background: p.color }}
-            ></div>
-           </div>
-         </div>
-         </div>
-        ))
-       )}
-      </div>
-     </div>
-
-    </div>
-   )}
-
-   <div className="content-card">
-    <div className="ticket-table-header">
-     <h3>All Support Tickets ({tickets.length})</h3>
-     {isAdmin && (
-      <div className="header-actions">
-       <button 
-        className="action-btn" 
-        style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}
-        onClick={handleBulkForwardAll}
-        disabled={bulkForwardLoading || tickets.length === 0}
-       >
-        {bulkForwardLoading ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />}
-        {bulkForwardLoading ? ' Forwarding...' : ' Forward All'}
-       </button>
-
-       <button className="action-btn btn-secondary" onClick={fetchTickets} disabled={loading || authLoading}>
-        {loading ? <Loader2 className="animate-spin" size={16} /> : <RefreshCw size={16} />}
-        {loading ? ' Refreshing...' : ' Refresh'}
-       </button>
-      </div>
-     )}
-    </div>
-    <div className="ticket-table-wrapper">
-     <table className="ticket-table">
-      <thead>
-       <tr>
-        <th>ID</th>
-        <th>Subject</th>
-        <th>Requester</th>
-        <th>Priority</th>
-        <th>Status</th>
-        <th>Created</th>
-        <th>Action</th>
-       </tr>
-      </thead>
-      <tbody>
-       {loading || authLoading ? (
-        <tr><td colSpan="7" style={{textAlign:'center', padding:'20px'}}>Loading...</td></tr>
-       ) : tickets.length === 0 ? (
-        <tr><td colSpan="7" style={{textAlign:'center', padding:'20px'}}>No tickets found.</td></tr>
-       ) : (
-        tickets.map(ticket => (
-         <tr key={ticket.id} onClick={() => openModal(ticket.id)}>
-          <td>#{ticket.id.substring(0, 8)}...</td>
-          <td>{ticket.subject}</td>
-          <td>{ticket.requester}</td>
-          <td>{renderPriorityBadge(ticket.priority)}</td>
-          <td>{renderStatusBadge(ticket.status)}</td>
-          <td>{ticket.created}</td>
-          <td>
-           <button className="action-btn" onClick={(e) => { e.stopPropagation(); openModal(ticket.id); }}>
-            <Eye size={16} /> View
-           </button>
-          </td>
-         </tr>
-        ))
-       )}
-      </tbody>
-     </table>
-    </div>
-   </div>
-
-   {/* --- MODAL PORTAL --- */}
-   {modalOpen && selectedTicket && ReactDOM.createPortal(
-    <div className="modal-overlay" onClick={closeModal}>
-     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-      <div className="modal-header">
-       <h3 style={{ fontSize: '20px', fontWeight: '600', color: 'var(--text-primary)' }}>Ticket details</h3>
-       <button className="close-modal" onClick={closeModal}>
-        <X size={24} />
-       </button>
-      </div>
-
-      <div className="ticket-details">
-       <h3 style={{marginBottom: '10px', fontSize:'1.2rem', color: 'var(--text-primary)'}}>
-        #{selectedTicket.id.substring(0, 8)}...: {selectedTicket.subject}
-       </h3>
-       
-       <div className="detail-item">
-        <span className="detail-label">Category</span>
-        <span className="detail-value">{selectedTicket.categoryLabel}</span>
-       </div>
-       <div className="detail-item">
-        <span className="detail-label">Status</span>
-        <span className="detail-value">{renderStatusBadge(selectedTicket.status)}</span>
-       </div>
-       <div className="detail-item">
-        <span className="detail-label">Priority</span>
-        <span className="detail-value">{renderPriorityBadge(selectedTicket.priority)}</span>
-       </div>
-       <div className="detail-item">
-        <span className="detail-label">System Notification</span>
-        <span className="detail-value">
-         {selectedTicket.posNotificationStatus === 'sent' ? (
-          <div className="status-value-wrapper" style={{ color: 'var(--success-color)' }}>
-           <CheckCircle size={18} />
-           <span>Sent</span>
-          </div>
-         ) : selectedTicket.posNotificationStatus === 'failed' ? (
-          <div className="status-value-wrapper" style={{ color: 'var(--danger-color)' }}>
-           <AlertTriangle size={18} />
-           <span>Failed</span>
-          </div>
-         ) : (
-          <span style={{ color: 'var(--text-secondary)' }}>Not Sent</span>
-         )}
-        </span>
-       </div>
-       {selectedTicket.posNotificationError && selectedTicket.posNotificationStatus === 'failed' && (
-        <div style={{ fontSize: '0.8rem', color: 'var(--danger-color)', marginTop: '-8px', marginBottom: '10px', textAlign: 'right' }}>
-         Error: {selectedTicket.posNotificationError}
-        </div>
-       )}
-      </div>
-
-      <div className="suggestions-section">
-       <h4 style={{fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '10px'}}>Ticket Description</h4>
-       <p style={{color: 'var(--text-primary)', marginBottom: '20px', lineHeight: '1.6'}}>
-        {selectedTicket.description}
-       </p>
-      </div>
-            
-            {/* ATTACHMENT DISPLAY SECTION */}
-            {imageAttachments.length > 0 && (
-                <div className="attachment-container">
-                    <h4 style={{fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px'}}>
-                        <Paperclip size={18} /> Attachments ({imageAttachments.length})
-                    </h4>
-                    <div className="attachment-grid">
-                        {imageAttachments.map((attachment, index) => (
-                            <img 
-                                key={index} 
-                                src={attachment.attachmentURL} 
-                                alt={`Attachment ${index + 1}: ${attachment.name}`} 
-                                className="attachment-img" 
-                                onClick={() => window.open(attachment.attachmentURL, '_blank')} // Open image in new tab
-                            />
-                        ))}
-                    </div>
+        <div className="summary-label"><FileText size={10} style={{marginRight:4}}/> Description</div>
+        <div className="description-box">{ticket.description}</div>
+        {ticket.attachments && ticket.attachments.length > 0 && (
+            <div style={{marginTop:'10px'}}>
+                <div className="summary-label">Attachments</div>
+                <div className="attachment-grid">
+                    {ticket.attachments.map((att, i) => (
+                        att.attachmentURL && (
+                            <img key={i} src={att.attachmentURL} className="attachment-img" onClick={() => window.open(att.attachmentURL, '_blank')} />
+                        )
+                    ))}
                 </div>
+            </div>
+        )}
+    </div>
+  );
+
+  // Helper for Carousel Data
+  const getCarouselData = () => {
+    if (!analyticsData) return { name: '', time: 0 };
+    const deptName = DEPARTMENTS[carouselIndex];
+    const timeVal = analyticsData.avgResolutionTime[deptName] || 0;
+    return { name: deptName, time: timeVal };
+  };
+
+  const currentCarouselData = getCarouselData();
+
+  return (
+    <div className="support-tickets-wrapper">
+      <style>{styles}</style>
+      {alert && <div className="custom-alert" style={{ backgroundColor: alert.type === 'success' ? 'var(--success-color)' : 'var(--danger-color)' }}>{alert.msg}</div>}
+
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px'}}>
+        <h2 style={{display:'flex', alignItems:'center', gap:'10px'}}>
+            <Briefcase /> Admin Support Console
+        </h2>
+      </div>
+
+      {/* ANALYTICS DASHBOARD */}
+      {analyticsData && (
+        <div className="analytics-grid">
+            <div className="stat-card">
+                <div className="stat-title"><CheckSquare size={16}/> Resolved by Department</div>
+                {Object.entries(analyticsData.deptResolved).map(([dept, count]) => (
+                        <div key={dept} className="chart-row">
+                        <div className="chart-label">{dept}</div>
+                        <div className="chart-bar-bg">
+                            <div className="chart-bar-fill" style={{width: `${(count / Math.max(...Object.values(analyticsData.deptResolved), 1)) * 100}%`, background: 'var(--success-color)'}}></div>
+                        </div>
+                        <div className="chart-value">{count}</div>
+                        </div>
+                ))}
+            </div>
+
+            <div className="stat-card carousel-card">
+                 <div className="carousel-header">
+                     <span className="carousel-label"><Clock size={12} style={{display:'inline', marginRight:4}}/> Response Time</span>
+                     <span className="carousel-dept-name">{currentCarouselData.name}</span>
+                 </div>
+                 
+                 <div style={{flex:1, display:'flex', flexDirection:'column', justifyContent:'center'}}>
+                     <div className="carousel-body">
+                         <div className="time-icon-wrapper">
+                             <Timer size={24} />
+                         </div>
+                         <div>
+                             <span className="carousel-value-lg">{currentCarouselData.time}</span>
+                             <span className="carousel-unit">hrs</span>
+                         </div>
+                     </div>
+                     <div className="carousel-desc">Avg time to resolve tickets</div>
+                 </div>
+
+                 <div className="carousel-nav">
+                     <button className="nav-btn" onClick={prevDept}><ChevronLeft size={16}/></button>
+                     <div style={{fontSize:'12px', color:'#a0aec0', fontWeight:'600'}}>{carouselIndex + 1} / {DEPARTMENTS.length}</div>
+                     <button className="nav-btn" onClick={nextDept}><ChevronRight size={16}/></button>
+                 </div>
+            </div>
+
+            <div className="stat-card">
+                <div className="stat-title"><TrendingUp size={16}/> Top Issue Categories</div>
+                {analyticsData.topCategories.map(([cat, count]) => (
+                        <div key={cat} className="chart-row">
+                        <div className="chart-label" style={{width:'140px'}}>{cat}</div>
+                        <div className="chart-bar-bg">
+                            <div className="chart-bar-fill" style={{width: `${(count / analyticsData.totalTickets) * 100}%`, background: 'var(--warning-color)'}}></div>
+                        </div>
+                        <div className="chart-value">{count}</div>
+                        </div>
+                ))}
+            </div>
+        </div>
+      )}
+
+      <div className="tabs-container">
+        <button className={`tab-btn ${activeTab === 'New' ? 'active' : ''}`} onClick={() => setActiveTab('New')}>
+          New Requests <span className="tab-count">{tickets.filter(t => t.status === 'open').length}</span>
+        </button>
+        <button className={`tab-btn ${activeTab === 'Pending' ? 'active' : ''}`} onClick={() => setActiveTab('Pending')}>
+          Pending <span className="tab-count">{tickets.filter(t => t.status === 'pending' && t.priority !== 'N/A').length}</span>
+        </button>
+        <button className={`tab-btn ${activeTab === 'Resolved' ? 'active' : ''}`} onClick={() => setActiveTab('Resolved')}>
+          Resolved <span className="tab-count">{tickets.filter(t => t.status === 'resolved').length}</span>
+        </button>
+      </div>
+
+      <div className="content-card">
+        {/* TOOLBAR: Search + Filter + Refresh */}
+        <div className="toolbar">
+            <div className="search-wrapper">
+                <Search size={16} className="search-icon"/>
+                <input 
+                    type="text" 
+                    className="search-input" 
+                    placeholder="Search by ID, Subject, or Requester..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                />
+            </div>
+
+            <div className="filter-wrapper">
+                <Filter size={16} className="filter-icon"/>
+                <select 
+                    className="filter-select"
+                    value={deptFilter}
+                    onChange={(e) => setDeptFilter(e.target.value)}
+                >
+                    <option value="All">All Departments</option>
+                    {DEPARTMENTS.map(dept => <option key={dept} value={dept}>{dept}</option>)}
+                </select>
+            </div>
+
+            <button className="action-btn" onClick={fetchTickets}>
+                {loading ? <Loader2 className="animate-spin" size={14}/> : <RefreshCw size={14}/>} Refresh
+            </button>
+        </div>
+
+        <div style={{overflowX: 'auto'}}>
+          <table className="ticket-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Subject</th>
+                <th>Category</th>
+                <th>Requester</th>
+                {activeTab !== 'New' && <th>Priority</th>}
+                {activeTab !== 'New' && <th>Department</th>}
+                {activeTab === 'New' && <th>Created</th>}
+                {activeTab === 'Pending' && <th>Time Remaining</th>}
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan="9" style={{textAlign:'center', padding:'30px'}}>Loading tickets...</td></tr>
+              ) : filteredTickets.length === 0 ? (
+                <tr><td colSpan="9" style={{textAlign:'center', padding:'30px', color:'#999'}}>No tickets found.</td></tr>
+              ) : (
+                filteredTickets.map(ticket => {
+                  const slaStatus = checkSLAStatus(ticket);
+                  const isOverdue = slaStatus === 'overdue';
+                  return (
+                    <tr 
+                      key={ticket.id} 
+                      onClick={() => { setSelectedTicket(ticket); setDetailsModalOpen(true); }}
+                      className={isOverdue ? 'ticket-row-danger' : ''}
+                    >
+                      <td>#{ticket.id.substring(0,6)}</td>
+                      <td>{ticket.subject}</td>
+                      <td><span style={{fontSize:'12px', background:'#eee', padding:'2px 8px', borderRadius:'6px'}}>{ticket.categoryLabel}</span></td>
+                      <td>{ticket.requester}</td>
+                      {activeTab !== 'New' && <td>{renderPriority(ticket.priority)}</td>}
+                      {activeTab !== 'New' && <td style={{fontWeight:'500'}}>{ticket.department}</td>}
+                      {activeTab === 'New' && <td>{ticket.created.split(',')[0]}</td>}
+                      {activeTab === 'Pending' && (<td><SLACountdown ticket={ticket} /></td>)}
+                      <td>
+                        {activeTab === 'New' && (
+                          <button className="action-btn" onClick={(e) => { e.stopPropagation(); openForwardModal(ticket); }}><Send size={14}/> Review & Forward</button>
+                        )}
+                        {activeTab !== 'New' && (
+                          <button className="action-btn" style={{backgroundColor:'var(--bg-secondary)', color:'var(--text-primary)'}}><Eye size={14}/> View</button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ======================= */}
+      {/* FORWARDING MODAL        */}
+      {/* ======================= */}
+      {forwardModalOpen && selectedTicket && (
+        <div className="modal-overlay" onClick={() => setForwardModalOpen(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div style={{display:'flex', justifyContent:'space-between', marginBottom:'10px'}}>
+              <h3>Review & Forward Ticket</h3>
+              <button onClick={() => setForwardModalOpen(false)} style={{background:'none', border:'none', cursor:'pointer'}}><X/></button>
+            </div>
+            <TicketSummaryBox ticket={selectedTicket} />
+            <div style={{borderTop:'2px dashed #eee', margin:'20px 0'}}></div>
+            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px'}}>
+                <div className="form-group">
+                <label style={{color:'var(--text-primary)'}}>Assigned Department</label>
+                <select className="form-select" value={targetDept} onChange={(e) => setTargetDept(e.target.value)}>
+                    {DEPARTMENTS.map(dept => <option key={dept} value={dept}>{dept}</option>)}
+                </select>
+                <div style={{fontSize:'10px', color:'#999', marginTop:'4px'}}>Auto-detected from: {selectedTicket.issueCategory}</div>
+                </div>
+                <div className="form-group">
+                <label style={{color:'var(--text-primary)'}}>Assign Priority Level</label>
+                <select className="form-select" value={targetPriority} onChange={(e) => setTargetPriority(e.target.value)} style={{borderColor: 'var(--accent-primary)', borderWidth:'2px'}}>
+                    <option value="" disabled>Select Priority...</option>
+                    {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+                </div>
+            </div>
+            <div style={{display:'flex', justifyContent:'flex-end', gap:'10px', marginTop:'20px'}}>
+              <button className="action-btn" style={{background:'#ccc'}} onClick={() => setForwardModalOpen(false)}>Cancel</button>
+              <button className="action-btn" onClick={confirmForward} disabled={isForwarding}>
+                {isForwarding ? <Loader2 className="animate-spin" size={16}/> : <Send size={16}/>} {isForwarding ? ' Processing...' : ' Confirm & Forward'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================= */}
+      {/* DETAILS / RESOLVE MODAL */}
+      {/* ======================= */}
+      {detailsModalOpen && selectedTicket && (
+        <div className="modal-overlay" onClick={() => setDetailsModalOpen(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div style={{display:'flex', justifyContent:'space-between', marginBottom:'15px'}}>
+              <h3 style={{display:'flex', alignItems:'center', gap:'10px'}}>Ticket Details #{selectedTicket.id.substring(0,6)}</h3>
+              <button onClick={() => setDetailsModalOpen(false)} style={{background:'none', border:'none', cursor:'pointer'}}><X/></button>
+            </div>
+            <div className="status-header">
+                <div style={{display:'flex', gap:'20px'}}>
+                    <div><div style={{fontSize:'11px', color:'#888', textTransform:'uppercase', fontWeight:'700'}}>Priority</div><div style={{marginTop:'5px'}}>{renderPriority(selectedTicket.priority)}</div></div>
+                    <div><div style={{fontSize:'11px', color:'#888', textTransform:'uppercase', fontWeight:'700'}}>Department</div><div style={{marginTop:'5px', display:'flex', alignItems:'center', gap:'5px', fontWeight:'500'}}><Building2 size={16} color="var(--accent-primary)"/> {selectedTicket.department || 'Not Assigned'}</div></div>
+                    {selectedTicket.forwardedAt && (<div><div style={{fontSize:'11px', color:'#888', textTransform:'uppercase', fontWeight:'700'}}>Forwarded</div><div style={{marginTop:'5px', display:'flex', alignItems:'center', gap:'5px', fontSize:'13px'}}><Clock size={16} color="#888"/> {selectedTicket.forwardedAt.toLocaleString()}</div></div>)}
+                </div>
+            </div>
+            <TicketSummaryBox ticket={selectedTicket} />
+            {selectedTicket.status !== 'resolved' && activeTab === 'Pending' && (
+              <div style={{borderTop:'2px solid var(--accent-primary)', paddingTop:'20px', background:'#f0f9ff', padding:'20px', borderRadius:'8px', marginTop:'20px'}}>
+                <label style={{display:'block', marginBottom:'10px', fontWeight:'600', color:'var(--accent-primary)'}}><CheckCircle size={16} style={{display:'inline', marginRight:'5px'}}/> Agent Resolution / Note</label>
+                <textarea style={{width:'100%', height:'100px', padding:'10px', borderRadius:'8px', border:'1px solid #90cdf4', marginBottom:'15px', background:'white'}} placeholder="Type the solution details here to resolve the ticket..." value={replyText} onChange={(e) => setReplyText(e.target.value)}/>
+                <div style={{display:'flex', justifyContent:'flex-end'}}>
+                   <button className="action-btn" style={{backgroundColor:'var(--success-color)'}} onClick={handleResolve}><CheckCircle size={16}/> Submit & Resolve</button>
+                </div>
+              </div>
             )}
-            {/* END ATTACHMENT DISPLAY SECTION */}
-
-      <div className="reply-section" style={{marginTop: '25px'}}>
-       <label htmlFor="reply-textarea">Agent Reply</label>
-       <textarea 
-        id="reply-textarea" 
-        placeholder="Type your response..." 
-        value={replyText} 
-        onChange={(e) => setReplyText(e.target.value)}
-       ></textarea>
-      </div>
-
-      <div className="modal-actions">
-       <button className="btn btn-secondary" onClick={closeModal}>Cancel</button>
-       <button className="btn btn-primary" onClick={submitReply} disabled={loading}>
-        {selectedTicket.status === 'resolved' ? 'Update Reply' : 'Send Reply & Resolve'}
-       </button>
-      </div>
-     </div>
-    </div>,
-    document.body
-   )}
-  </div>
- );
+            {selectedTicket.status === 'resolved' && (
+              <div style={{background:'#f0fdf4', padding:'15px', borderRadius:'8px', border:'1px solid var(--success-color)', marginTop:'20px'}}>
+                <h4 style={{color:'var(--success-color)', fontSize:'14px', marginBottom:'5px', display:'flex', alignItems:'center', gap:'5px'}}><CheckCircle size={16}/> Ticket Resolved</h4>
+                <p style={{fontSize:'14px', color:'#333'}}><strong>Agent Note:</strong> {selectedTicket.agentReply}</p>
+                <div style={{fontSize:'12px', color:'#666', marginTop:'10px'}}>Resolved on: {selectedTicket.resolvedAt?.toDate ? selectedTicket.resolvedAt.toDate().toLocaleString() : 'Just now'}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default SupportTickets;
