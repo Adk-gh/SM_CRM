@@ -90,7 +90,7 @@ useEffect(() => {
 if (loading) {
  return (
  <div className="loading-screen">
-  <div className="loading-spinner">Loading...</div>
+  <div className="loading-spinner"></div>
  </div>
  );
 }

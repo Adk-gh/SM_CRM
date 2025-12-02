@@ -18,3 +18,38 @@ html, body {
   padding: 0;
   overflow: auto;
 }
+/* App.css */
+
+/* 1. The Container: Covers the whole screen and centers content */
+.loading-screen {
+  position: fixed; /* Stays in place even if you scroll */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  background-color: #f8f9fa; /* Light background (change to #1a1a1a for dark mode) */
+  display: flex;
+  justify-content: center; /* Center horizontally */
+  align-items: center; /* Center vertically */
+  z-index: 9999; /* Ensures it sits on top of everything */
+}
+
+/* 2. The Spinner: A circular border with one colored side */
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #e0e0e0; /* Light grey ring */
+  border-top: 5px solid #3b82f6; /* Blue active spinner color - change this to match your brand */
+  border-radius: 50%; /* Makes it a circle */
+  animation: spin 1s linear infinite; /* The animation reference */
+}
+
+/* 3. The Animation Logic */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}

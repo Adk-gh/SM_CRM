@@ -384,7 +384,8 @@ const Login = () => {
       const user = auth.currentUser;
       await setDoc(doc(db, 'users', user.uid), { ...profileData, profileCompleted: true, is2FAPending: false }, { merge: true });
       setSuccessMessage('Profile saved! Redirecting...');
-    } catch (err) {
+    } catch (error) {
+      console.error(error);
       setError('Failed to save profile.');
     } finally {
       setLoading(false);

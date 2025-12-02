@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { signOut } from 'firebase/auth';
-import { auth, db } from '../../../firebase'; // Ensure path is correct
+import { signOut, updateEmail, updatePassword } from 'firebase/auth'; // Added Auth update functions
+import { auth, db } from '../../../firebase'; 
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import Sidebar from '../Sidebar/Sidebar'; // Ensure you have this component
+import Sidebar from '../Sidebar/Sidebar'; 
 import { 
   Moon, Sun, User, LogOut, X, Edit, Save, 
   ChevronDown, AlertTriangle, Loader2, 
-  LayoutDashboard, Users, LifeBuoy, Settings
+  LayoutDashboard, Users, LifeBuoy, Settings,
+  Lock, Mail, Briefcase, Phone
 } from 'lucide-react';
 
-// --- CSS STYLES (Injected) ---
+// --- CSS STYLES ---
 const styles = `
 /* Variables */
 :root {
@@ -56,24 +57,25 @@ body {
 
 /* Main Layout Structure */
 .dashboard-container {
-  display: flex;
   min-height: 100vh;
 }
 
 .dashboard {
   display: flex;
-  width: 100%;
+  min-height: 100vh;
 }
 
+/* --- LAYOUT FIX: Sidebar Offset --- */
 .content {
   flex: 1;
+  margin-left: 280px; 
   padding: 40px 30px;
   background: var(--bg-primary);
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  transition: all 0.3s ease;
-  overflow-x: hidden; /* Prevent horizontal scroll */
+  transition: margin-left 0.3s ease;
+  overflow-x: hidden;
 }
 
 /* Header */
@@ -172,11 +174,11 @@ body {
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.15);
   border: 1px solid var(--border-light);
-  min-width: 200px;
-  padding: 8px;
+  min-width: 220px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
   z-index: 100;
   animation: fadeIn 0.2s ease-out;
 }
@@ -188,9 +190,9 @@ body {
   text-decoration: none;
   color: var(--text-primary);
   transition: all 0.2s ease;
-  border: none;
+  border: 1px solid var(--border-light);
   border-radius: 8px;
-  background: transparent;
+  background: var(--bg-secondary);
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
@@ -198,8 +200,9 @@ body {
 }
 
 .profile-menu-item:hover {
-  background: var(--bg-secondary);
-  color: var(--accent-primary);
+  background: var(--accent-primary);
+  color: white;
+  border-color: var(--accent-primary);
 }
 
 /* User Drawer (Right Side) */
@@ -266,26 +269,40 @@ body {
 }
 
 .detail-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border-light);
+  display: grid;
+  grid-template-columns: 135px minmax(0, 1fr); 
+  gap: 10px;
+  align-items: center; 
+  margin-bottom: 12px; 
+  background-color: var(--bg-secondary); 
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 12px 15px;
+  width: 100%;
 }
-.detail-item:last-child { border-bottom: none; }
 
 .detail-label {
   font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
+  font-weight: 700;
+  color: var(--accent-primary);
+  text-transform: uppercase;
 }
 
 .detail-value {
   font-size: 14px;
   font-weight: 500;
   color: var(--text-primary);
-  text-align: right;
+  text-align: left;
+  background-color: transparent; 
+  border: none;
+  padding: 0;
+  width: 100%; 
+  white-space: nowrap; 
+  overflow-x: auto; 
+  scrollbar-width: none; 
 }
+
+.detail-value::-webkit-scrollbar { display: none; }
 
 .edit-toggle {
   width: 100%;
@@ -315,6 +332,16 @@ body {
   animation: fadeIn 0.3s;
 }
 
+.form-section-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    font-weight: 700;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: 5px;
+}
+
 .form-group { margin-bottom: 15px; }
 .form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
 .form-group input {
@@ -325,10 +352,30 @@ body {
 }
 .form-group input:focus { border-color: var(--accent-primary); }
 
+.password-group {
+    border: 1px solid var(--border-light);
+    padding: 15px;
+    border-radius: 8px;
+    background: rgba(255, 0, 0, 0.02);
+    margin-bottom: 15px;
+}
+
 .form-actions { display: flex; gap: 10px; margin-top: 20px; }
 .btn { flex: 1; padding: 10px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .btn-primary { background: var(--accent-primary); color: white; }
 .btn-secondary { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-light); }
+
+.status-message {
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.status-error { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid var(--danger); }
+.status-success { background: rgba(72, 187, 120, 0.1); color: var(--success); border: 1px solid var(--success); }
 
 /* LOADING SCREEN */
 .loading-screen {
@@ -382,7 +429,10 @@ body {
 
 /* Responsive */
 @media (max-width: 768px) {
-  .content { padding: 20px; }
+  .content { 
+    margin-left: 0; /* Reset margin on mobile */
+    padding: 20px; 
+  }
   .dashboard-header { flex-direction: column-reverse; align-items: flex-start; gap: 15px; }
   .user-profile { align-self: flex-end; }
   .user-drawer { width: 100%; right: -100%; }
@@ -395,8 +445,22 @@ const Layout = ({ navigation, userRole }) => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showUserDrawer, setShowUserDrawer] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
-  const [editForm, setEditForm] = useState({});
+  
+  // Expanded Edit Form State
+  const [editForm, setEditForm] = useState({
+    name: '',
+    position: '',
+    department: '',
+    branch: '',
+    email: '',
+    phone: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+
+  const [formStatus, setFormStatus] = useState({ type: '', message: '' });
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
 
   const navigate = useNavigate();
@@ -422,6 +486,7 @@ const Layout = ({ navigation, userRole }) => {
       if (showUserDrawer && userDrawerRef.current && !userDrawerRef.current.contains(event.target) && !isClickOnProfileTrigger) {
         setShowUserDrawer(false);
         setShowEditForm(false);
+        setFormStatus({ type: '', message: '' });
       }
     };
     if (showUserDrawer) document.addEventListener('mousedown', handleClickOutsideDrawer);
@@ -442,7 +507,7 @@ const Layout = ({ navigation, userRole }) => {
               position: userData.position || 'Not specified',
               department: userData.department || 'Not specified',
               branch: userData.branch || 'Not specified',
-              email: userData.email || auth.currentUser.email,
+              email: auth.currentUser.email || userData.email, // Prefer Auth email
               phone: userData.phone || 'Not specified',
               hireDate: userData.hireDate || 'Not specified',
               role: userData.role || userRole || 'support',
@@ -488,30 +553,90 @@ const Layout = ({ navigation, userRole }) => {
         department: user.department,
         branch: user.branch,
         email: user.email,
-        phone: user.phone
+        phone: user.phone,
+        newPassword: '',
+        confirmPassword: ''
       });
+      setFormStatus({ type: '', message: '' });
       setShowEditForm(true);
     }
   };
 
   const handleSaveProfile = async () => {
+    setFormStatus({ type: '', message: '' });
+    setIsSaving(true);
+    
+    // 1. Validation
+    if (editForm.newPassword && editForm.newPassword !== editForm.confirmPassword) {
+      setFormStatus({ type: 'error', message: 'Passwords do not match.' });
+      setIsSaving(false);
+      return;
+    }
+
+    if (editForm.newPassword && editForm.newPassword.length < 6) {
+        setFormStatus({ type: 'error', message: 'Password must be at least 6 characters.' });
+        setIsSaving(false);
+        return;
+    }
+
     try {
       if (auth.currentUser) {
+        // 2. Update Firestore Data
         const userRef = doc(db, 'users', auth.currentUser.uid);
         await updateDoc(userRef, {
           fullName: editForm.name,
           position: editForm.position,
           department: editForm.department,
           branch: editForm.branch,
+          // We also update email in Firestore for display purposes, but Auth is truth
           email: editForm.email,
           phone: editForm.phone,
           updatedAt: new Date()
         });
-        setUser(prev => ({ ...prev, ...editForm }));
-        setShowEditForm(false);
+
+        // 3. Update Auth Email if changed
+        if (editForm.email !== user.email) {
+            await updateEmail(auth.currentUser, editForm.email);
+        }
+
+        // 4. Update Auth Password if provided
+        if (editForm.newPassword) {
+            await updatePassword(auth.currentUser, editForm.newPassword);
+        }
+
+        // Update local state
+        setUser(prev => ({ 
+            ...prev, 
+            name: editForm.name,
+            position: editForm.position,
+            department: editForm.department,
+            branch: editForm.branch,
+            email: editForm.email,
+            phone: editForm.phone
+        }));
+
+        setFormStatus({ type: 'success', message: 'Profile updated successfully!' });
+        
+        // Close form after short delay
+        setTimeout(() => {
+            setShowEditForm(false);
+            setFormStatus({ type: '', message: '' });
+        }, 1500);
       }
     } catch (error) {
       console.error('Error updating profile:', error);
+      let errorMsg = 'Failed to update profile.';
+      
+      // Handle "Requires Recent Login" error from Firebase
+      if (error.code === 'auth/requires-recent-login') {
+          errorMsg = 'For security, please logout and login again to change sensitive info.';
+      } else if (error.code === 'auth/email-already-in-use') {
+          errorMsg = 'This email is already in use by another account.';
+      }
+
+      setFormStatus({ type: 'error', message: errorMsg });
+    } finally {
+        setIsSaving(false);
     }
   };
 
@@ -622,48 +747,120 @@ const Layout = ({ navigation, userRole }) => {
         </div>
 
         <div className="user-details">
-          <div className="details-card">
-            <h3>
-                Personal Info
-                <button className="edit-toggle" onClick={handleEditProfile} style={{width:'auto', marginTop:0}}>
-                    <Edit size={14} /> Edit
-                </button>
-            </h3>
-            {[
-              { l: 'Full Name', v: user?.name },
-              { l: 'ID', v: user?.id },
-              { l: 'Position', v: user?.position },
-              { l: 'Department', v: user?.department },
-              { l: 'Branch', v: user?.branch },
-              { l: 'Email', v: user?.email },
-              { l: 'Phone', v: user?.phone },
-            ].map((item, i) => (
-              <div className="detail-item" key={i}>
-                <span className="detail-label">{item.l}</span>
-                <span className="detail-value">{item.v}</span>
+          {!showEditForm ? (
+              <div className="details-card">
+                <h3>
+                    Personal Info
+                    <button className="edit-toggle" onClick={handleEditProfile} style={{width:'auto', marginTop:0}}>
+                        <Edit size={14} /> Edit
+                    </button>
+                </h3>
+                {[
+                  { l: 'Full Name', v: user?.name },
+                  { l: 'ID', v: user?.id },
+                  { l: 'Position', v: user?.position },
+                  { l: 'Department', v: user?.department },
+                  { l: 'Branch', v: user?.branch },
+                  { l: 'Email', v: user?.email },
+                  { l: 'Phone', v: user?.phone },
+                ].map((item, i) => (
+                  <div className="detail-item" key={i}>
+                    <span className="detail-label">{item.l}</span>
+                    <span className="detail-value">{item.v}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* EDIT FORM */}
-        {showEditForm && (
+          ) : (
+             /* EDIT FORM */
             <div className="edit-profile-form">
                 <h3>Edit Information</h3>
+                
+                {formStatus.message && (
+                    <div className={`status-message ${formStatus.type === 'error' ? 'status-error' : 'status-success'}`}>
+                        {formStatus.type === 'error' ? <AlertTriangle size={16} /> : <Save size={16}/>}
+                        {formStatus.message}
+                    </div>
+                )}
+
+                <div className="form-section-title">General</div>
                 <div className="form-group">
                     <label>Full Name</label>
                     <input type="text" value={editForm.name} onChange={e => setEditForm({...editForm, name:e.target.value})} />
                 </div>
+                
                 <div className="form-group">
-                    <label>Phone</label>
-                    <input type="text" value={editForm.phone} onChange={e => setEditForm({...editForm, phone:e.target.value})} />
+                    <label>Email Address</label>
+                    <div style={{position:'relative'}}>
+                        <input type="email" value={editForm.email} onChange={e => setEditForm({...editForm, email:e.target.value})} style={{paddingLeft:'35px'}} />
+                        <Mail size={16} style={{position:'absolute', left:'10px', top:'12px', color:'var(--text-light)'}} />
+                    </div>
                 </div>
+
+                <div className="form-group">
+                    <label>Phone Number</label>
+                    <div style={{position:'relative'}}>
+                        <input type="text" value={editForm.phone} onChange={e => setEditForm({...editForm, phone:e.target.value})} style={{paddingLeft:'35px'}} />
+                        <Phone size={16} style={{position:'absolute', left:'10px', top:'12px', color:'var(--text-light)'}} />
+                    </div>
+                </div>
+
+                <div className="form-section-title" style={{marginTop:'20px'}}>Job Details</div>
+                <div className="form-group">
+                    <label>Position</label>
+                    <div style={{position:'relative'}}>
+                        <input type="text" value={editForm.position} onChange={e => setEditForm({...editForm, position:e.target.value})} style={{paddingLeft:'35px'}} />
+                        <Briefcase size={16} style={{position:'absolute', left:'10px', top:'12px', color:'var(--text-light)'}} />
+                    </div>
+                </div>
+
+                <div className="form-group">
+                    <label>Department</label>
+                    <input type="text" value={editForm.department} onChange={e => setEditForm({...editForm, department:e.target.value})} />
+                </div>
+                
+                <div className="form-group">
+                    <label>Branch</label>
+                    <input type="text" value={editForm.branch} onChange={e => setEditForm({...editForm, branch:e.target.value})} />
+                </div>
+
+                <div className="form-section-title" style={{marginTop:'20px'}}>Security</div>
+                <div className="password-group">
+                    <div className="form-group">
+                        <label>New Password (Optional)</label>
+                        <div style={{position:'relative'}}>
+                            <input 
+                                type="password" 
+                                placeholder="Leave empty to keep current"
+                                value={editForm.newPassword} 
+                                onChange={e => setEditForm({...editForm, newPassword:e.target.value})} 
+                                style={{paddingLeft:'35px'}}
+                            />
+                            <Lock size={16} style={{position:'absolute', left:'10px', top:'12px', color:'var(--text-light)'}} />
+                        </div>
+                    </div>
+                    {editForm.newPassword && (
+                        <div className="form-group">
+                            <label>Confirm Password</label>
+                            <input 
+                                type="password" 
+                                placeholder="Confirm new password"
+                                value={editForm.confirmPassword} 
+                                onChange={e => setEditForm({...editForm, confirmPassword:e.target.value})} 
+                            />
+                        </div>
+                    )}
+                </div>
+
                 <div className="form-actions">
-                    <button className="btn btn-primary" onClick={handleSaveProfile}><Save size={16}/> Save</button>
-                    <button className="btn btn-secondary" onClick={() => setShowEditForm(false)}>Cancel</button>
+                    <button className="btn btn-primary" onClick={handleSaveProfile} disabled={isSaving}>
+                        {isSaving ? <Loader2 className="spinner-icon" size={16}/> : <Save size={16}/>} 
+                        {isSaving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                    <button className="btn btn-secondary" onClick={() => setShowEditForm(false)} disabled={isSaving}>Cancel</button>
                 </div>
             </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

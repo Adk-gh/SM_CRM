@@ -137,7 +137,7 @@ const styles = `
   .tab-count { font-size: 12px; background: var(--bg-secondary); padding: 2px 8px; border-radius: 10px; margin-left: 8px; }
 
   .content-card {
-    background: var(--card-bg); border-radius: 16px; padding: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    background: var(--card-bg); border-radius: 16px; padding: 30px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
   }
 
   .ticket-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
@@ -638,11 +638,6 @@ const SupportTickets = () => {
       <style>{styles}</style>
       {alert && <div className="custom-alert" style={{ backgroundColor: alert.type === 'success' ? 'var(--success-color)' : 'var(--danger-color)' }}>{alert.msg}</div>}
 
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px'}}>
-        <h2 style={{display:'flex', alignItems:'center', gap:'10px'}}>
-            <Briefcase /> Admin Support Console
-        </h2>
-      </div>
 
       {/* ANALYTICS DASHBOARD */}
       {analyticsData && (

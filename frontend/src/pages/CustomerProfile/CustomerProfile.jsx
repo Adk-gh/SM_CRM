@@ -432,7 +432,6 @@
       const [customers, setCustomers] = useState([]);
       const [filteredCustomers, setFilteredCustomers] = useState([]);
       const [loading, setLoading] = useState(false);
-      const [error, setError] = useState(null);
       const [isDark, setIsDark] = useState(false); // Theme state for charts
       
       // Data States
@@ -464,12 +463,10 @@
       // --- DATA FETCHING ---
       const fetchCustomers = useCallback(async () => {
           try {
-              setError(null);
               const customersCollection = collection(db, 'customers');
               const customersSnapshot = await getDocs(customersCollection);
               
               if (customersSnapshot.empty) {
-                  setError('No customers found in database');
                   setCustomers([]);
                   setFilteredCustomers([]);
                   setCurrentCustomer(null);
@@ -494,10 +491,8 @@
               }
           } catch (err) {
               console.error('Error fetching customers:', err);
-              setError('Failed to load customers');
           }
       }, [currentCustomer]);
-
       // --- FETCH REVIEWS & TICKETS ---
       const fetchUserData = useCallback(async (user) => {
           if (!user) {
@@ -550,20 +545,6 @@
       }, [currentCustomer, fetchUserData]);
 
       // --- RELOAD HANDLERS ---
-      const handleReloadCustomers = async () => {
-          setLoading(true);
-          try {
-              const controller = new AbortController();
-              setTimeout(() => controller.abort(), 10000);
-              await fetch("https://sm-crm-rho.vercel.app/api/customer", { method: 'GET', signal: controller.signal });
-              await fetchCustomers();
-          } catch (err) {
-              console.error("Error reloading:", err);
-          } finally {
-              setLoading(false);
-          }
-      };
-
       const handleReloadReviews = async () => {
           setLoadingReviews(true);
           try {
