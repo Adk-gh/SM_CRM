@@ -1,15 +1,28 @@
-const fetch = require('node-fetch');
+// sm-crm-app/api/submit-ticket.js
+
+// ❌ REMOVED: const fetch = require('node-fetch');
+// Native Node.js fetch is used below to fix the [DEP0169] warning.
+
 const admin = require('firebase-admin');
 
 // -------------------------------------------------------------------
-// 1. FIREBASE INITIALIZATION
+// 1. FIREBASE INITIALIZATION (With Crash Protection)
 // -------------------------------------------------------------------
 if (!admin.apps.length) {
   try {
-    const serviceAccountJson = process.env.CRM_FIREBASE_CREDENTIALS;
+    let serviceAccountJson = process.env.CRM_FIREBASE_CREDENTIALS;
     if (!serviceAccountJson) {
       throw new Error("CRM_FIREBASE_CREDENTIALS environment variable is not set.");
     }
+
+    // 🛡️ CRASH PROTECTION: Fix Vercel escaped newlines in private key
+    // This is crucial for this file too, otherwise, it might crash in production
+    if (typeof serviceAccountJson === 'string' && serviceAccountJson.includes('\\n')) {
+      const parsed = JSON.parse(serviceAccountJson);
+      parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
+      serviceAccountJson = JSON.stringify(parsed);
+    }
+
     const serviceAccount = JSON.parse(serviceAccountJson);
 
     admin.initializeApp({
@@ -17,6 +30,8 @@ if (!admin.apps.length) {
     });
   } catch (error) {
     console.error("CRM Firebase Initialization Error:", error.message);
+    // It is often safer to throw here so the function fails hard if DB connection fails
+    throw new Error("Database connection failed");
   }
 }
 
@@ -24,9 +39,23 @@ const db = admin.firestore();
 
 module.exports = async (req, res) => {
   // -------------------------------------------------------------------
-  // 🔑 START CORS FIX
+  // 🔑 START CORS FIX (Dynamic)
   // -------------------------------------------------------------------
-  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
+  const allowedOrigins = [
+    'http://localhost:5173', 
+    'https://304sm-crm-rho.vercel.app', // Your production domain
+    // 'https://your-custom-domain.com' // Add others if needed
+  ];
+  
+  const origin = req.headers.origin;
+  
+  // If the origin is in our allowed list, use it. Otherwise, fallback to localhost.
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
+  }
+
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -45,7 +74,7 @@ module.exports = async (req, res) => {
 
   try {
     // -----------------------------------------------------------------
-    // STEP 1: Verify reCAPTCHA with Google
+    // STEP 1: Verify reCAPTCHA with Google (Using Native Fetch)
     // -----------------------------------------------------------------
     const secretKey = process.env.RECAPTCHA_SECRET_KEY;
 
@@ -54,9 +83,13 @@ module.exports = async (req, res) => {
       return res.status(500).json({ message: "Server configuration error." });
     }
 
-    const verifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${captchaToken}`;
+    // Construct URL cleanly to ensure no encoding issues
+    const verifyUrl = new URL('https://www.google.com/recaptcha/api/siteverify');
+    verifyUrl.searchParams.append('secret', secretKey);
+    verifyUrl.searchParams.append('response', captchaToken);
 
-    const googleResponse = await fetch(verifyUrl, { method: 'POST' });
+    // Native fetch call
+    const googleResponse = await fetch(verifyUrl.toString(), { method: 'POST' });
     const googleData = await googleResponse.json();
 
     if (!googleData.success) {
@@ -67,11 +100,12 @@ module.exports = async (req, res) => {
     // -----------------------------------------------------------------
     // STEP 2: Save to Firestore
     // -----------------------------------------------------------------
+    // We use serverTimestamp() for absolute accuracy on the server side
     const docRef = await db.collection('supportTickets').add({
       ...ticketData,
       status: 'open',
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       captchaVerified: true,
       source: 'web-portal'
     });
