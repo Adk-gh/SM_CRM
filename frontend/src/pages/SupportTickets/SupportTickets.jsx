@@ -1,13 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
-  collection, 
-  getDocs, 
-  getDoc, 
-  doc, 
-  updateDoc, 
-  serverTimestamp, 
-  query, 
-  where 
+  collection, getDocs, getDoc, doc, updateDoc, serverTimestamp
 } from 'firebase/firestore';
 import { db, auth } from '../../../firebase'; 
 import { onAuthStateChanged } from 'firebase/auth';
@@ -15,28 +8,23 @@ import emailjs from '@emailjs/browser';
 import { 
   Loader2, RefreshCw, Eye, Send, CheckCircle, X, Laptop,
   CreditCard, Lock, Sparkles, Bug, HelpCircle, Banknote, Package, ShoppingBag,
-  Globe, User, Calendar, Building2, Clock, TrendingUp,
-  Timer, CheckSquare, Search, Filter, ShieldAlert, ChevronLeft, ChevronRight
+  Globe, User, Building2, Clock, TrendingUp,
+  Timer, CheckSquare, Search, Filter, ShieldAlert, ChevronLeft, ChevronRight,
+  MapPin, Phone, AlertTriangle, FileText, Download, Paperclip, Image as ImageIcon, Trash2
 } from 'lucide-react';
 
 // =======================================
-// 1. ROLE CONFIGURATION
+// 1. CONFIGURATION
 // =======================================
 
 const ROLE_TO_DEPT_MAP = {
-  'admin': 'All',            
-  'Admin': 'All',            
-  'Super_Admin': 'All',      
-  
-  // Department Staff
-  'POS_Support': 'POS',
-  'OnlineShopping_Support': 'Online Shopping',
-  'Payroll_Admin': 'Payroll',
-  'HRMIS_Admin': 'HRMIS',
-  'Inventory_Manager': 'Inventory',
-  'Warehouse_Operator': 'Warehouse'
+  'admin': 'All', 'Admin': 'All', 'Super_Admin': 'All',
+  'POS_Support': 'POS', 'OnlineShopping_Support': 'Online Shopping',
+  'Payroll_Admin': 'Payroll', 'HRMIS_Admin': 'HRMIS',
+  'Inventory_Manager': 'Inventory', 'Warehouse_Operator': 'Warehouse'
 };
 
+// EMAILJS CONFIG
 const EMAIL_FORWARD_SERVICE_ID = "service_vg58qh8"; 
 const EMAIL_FORWARD_TEMPLATE_ID = "template_9lluwnr"; 
 const EMAIL_FORWARD_PUBLIC_KEY = "6XU-uQ7Og0d4oAykV"; 
@@ -45,10 +33,11 @@ const EMAIL_RESOLVE_SERVICE_ID = "service_e6osrqk";
 const EMAIL_RESOLVE_TEMPLATE_ID = "template_9f0b21p"; 
 const EMAIL_RESOLVE_PUBLIC_KEY = "pdnrkVk1D1DXJmS5c"; 
 
-const DEPARTMENTS = [
-  'POS', 'Online Shopping', 'Payroll', 'HRMIS', 'Inventory', 'Warehouse'
-];
+// CLOUDINARY CONFIG
+const CLOUD_NAME = "dc7etbsfe";
+const UPLOAD_PRESET = "image_upload";
 
+const DEPARTMENTS = ['POS', 'Online Shopping', 'Payroll', 'HRMIS', 'Inventory', 'Warehouse'];
 const PRIORITIES = ['High', 'Medium', 'Low'];
 const SLA_LIMITS = { High: 72, Medium: 96, Low: 168 };
 
@@ -82,6 +71,14 @@ const styles = `
   :root { --bg-primary: #E9ECEE; --bg-secondary: #F4F4F4; --text-primary: #395A7F; --text-secondary: #6E9FC1; --accent-primary: #395A7F; --card-bg: #FFFFFF; --danger-color: #EF4444; --warning-color: #F59E0B; --success-color: #10B981; }
   * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
   .support-tickets-wrapper { background: var(--bg-primary); min-height: 100vh; padding: 30px; color: var(--text-primary); }
+  
+  /* UTILS */
+  .text-muted { color: #94a3b8; }
+  .text-dark { color: #1e293b; }
+  .text-sm { font-size: 13px; }
+  .font-bold { font-weight: 600; }
+  
+  /* TABS & TABLES */
   .tabs-container { display: flex; gap: 20px; margin-bottom: 25px; border-bottom: 2px solid var(--text-secondary); padding-bottom: 0; }
   .tab-btn { background: none; border: none; font-size: 16px; font-weight: 600; color: var(--text-secondary); cursor: pointer; padding: 10px 20px; position: relative; }
   .tab-btn.active { color: var(--accent-primary); }
@@ -92,26 +89,65 @@ const styles = `
   .ticket-table th { text-align: left; padding: 15px; background: var(--bg-secondary); color: var(--text-primary); }
   .ticket-table td { padding: 15px; border-bottom: 1px solid #ddd; }
   .ticket-table tr:hover { background: var(--bg-secondary); cursor: pointer; }
+  
+  /* BADGES & BUTTONS */
   .priority-badge { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
   .priority-high { color: var(--danger-color); border: 1px solid var(--danger-color); background: rgba(239,68,68,0.1); }
   .priority-medium { color: var(--warning-color); border: 1px solid var(--warning-color); background: rgba(245,158,11,0.1); }
   .priority-low { color: var(--info-color); border: 1px solid var(--info-color); background: rgba(59,130,246,0.1); }
-  .action-btn { background: var(--accent-primary); color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .action-btn { background: var(--accent-primary); color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px; transition: opacity 0.2s; }
+  .action-btn:hover { opacity: 0.9; }
+  .action-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* MODALS */
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); }
-  .modal-content { background: var(--card-bg); padding: 30px; border-radius: 16px; width: 700px; max-width: 90%; max-height: 90vh; overflow-y: auto; }
+  .modal-content { background: var(--card-bg); padding: 40px; border-radius: 12px; width: 800px; max-width: 95%; max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
   .form-select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: var(--bg-secondary); }
-  .toolbar { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-bottom: 15px; }
-  .search-input { padding: 8px 12px 8px 35px; border-radius: 8px; border: 1px solid #ddd; width: 250px; }
-  .filter-select { padding: 8px 12px 8px 35px; border-radius: 8px; border: 1px solid #ddd; background: white; appearance: none; }
-  .ticket-row-danger { background-color: rgba(239, 68, 68, 0.05); box-shadow: inset 3px 0 0 var(--danger-color); }
-  .custom-alert { position: fixed; top: 20px; right: 20px; padding: 15px 25px; border-radius: 8px; color: white; font-weight: 500; z-index: 2000; }
+
+  /* NEW DETAIL LAYOUT STYLES */
+  .detail-header-meta { font-size: 13px; font-weight: 700; color: #9ca3af; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .detail-subject { font-size: 22px; font-weight: 600; color: #1f2937; margin-bottom: 30px; }
+  .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 40px; margin-bottom: 30px; }
+  .contact-item { display: flex; flex-direction: column; }
+  .contact-label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 6px; }
+  .contact-value { font-size: 14px; color: #334155; display: flex; align-items: center; gap: 8px; }
+  .status-summary-box { background: #f8fafc; border-radius: 8px; padding: 20px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 30px; border: 1px solid #f1f5f9; }
+  .desc-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; color: #475569; font-size: 14px; line-height: 1.5; min-height: 80px; }
   
-  /* ANALYTICS STYLES */
+  /* CAROUSEL STYLES */
+  .carousel-container { position: relative; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; margin-bottom: 10px; height: 350px; display: flex; align-items: center; justify-content: center; }
+  .carousel-slide { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; padding: 20px; position: relative; }
+  .carousel-image { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px; }
+  .carousel-file-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; color: #64748b; }
+  .carousel-nav-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255, 255, 255, 0.8); border: 1px solid #e2e8f0; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #475569; transition: all 0.2s; z-index: 2; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+  .carousel-nav-btn:hover { background: #fff; color: var(--accent-primary); transform: translateY(-50%) scale(1.1); }
+  .carousel-nav-btn.left { left: 10px; }
+  .carousel-nav-btn.right { right: 10px; }
+  .carousel-footer { padding: 10px 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0 0 8px 8px; border-top: none; display: flex; justify-content: space-between; align-items: center; }
+  .carousel-indicators { display: flex; gap: 6px; align-items: center; }
+  .carousel-dot { width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; cursor: pointer; transition: all 0.2s; }
+  .carousel-dot.active { background: var(--accent-primary); transform: scale(1.2); }
+
+  /* RESOLUTION UPLOAD STYLES */
+  .resolution-upload-container { margin-top: 15px; display: flex; align-items: center; gap: 15px; }
+  .upload-btn-wrapper { position: relative; overflow: hidden; display: inline-block; }
+  .upload-btn { border: 1px solid #cbd5e1; color: #64748b; background-color: #fff; padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s; }
+  .upload-btn:hover { background-color: #f1f5f9; border-color: #94a3b8; }
+  .upload-btn-wrapper input[type=file] { font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; }
+  .preview-container { position: relative; width: 60px; height: 60px; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; }
+  .preview-image { width: 100%; height: 100%; object-fit: cover; }
+  .remove-preview { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.5); color: white; border-radius: 50%; padding: 2px; cursor: pointer; }
+
+  /* ANALYTICS & TOOLBAR */
   .analytics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
   .stat-card { background: var(--card-bg); padding: 25px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; height: 100%; display: flex; flex-direction: column; }
   .stat-title { font-size: 13px; color: #718096; font-weight: 700; text-transform: uppercase; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
-  
-  /* CAROUSEL */
+  .toolbar { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-bottom: 15px; }
+  .search-input { padding: 8px 12px 8px 35px; border-radius: 8px; border: 1px solid #ddd; width: 250px; }
+  .filter-select { padding: 8px 12px 8px 35px; border-radius: 8px; border: 1px solid #ddd; background: white; appearance: none; }
+  .custom-alert { position: fixed; top: 20px; right: 20px; padding: 15px 25px; border-radius: 8px; color: white; font-weight: 500; z-index: 2000; }
+
+  /* CAROUSEL DASHBOARD WIDGET */
   .carousel-card { position: relative; border-top: 4px solid var(--warning-color); display: flex; flex-direction: column; justify-content: space-between; }
   .carousel-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
   .carousel-label { font-size: 12px; color: #718096; font-weight: 700; text-transform: uppercase; }
@@ -136,11 +172,11 @@ const styles = `
   .sla-container { width: 140px; }
   .sla-bar-bg { width: 100%; height: 6px; background: #e5e7eb; border-radius: 10px; overflow: hidden; }
   .sla-bar-fill { height: 100%; transition: width 1s linear; }
-
+  
   @media (max-width: 1024px) {
     .analytics-grid { grid-template-columns: 1fr; }
-    .toolbar { flex-direction: column; align-items: stretch; }
-    .search-input { width: 100%; }
+    .contact-grid { grid-template-columns: 1fr; }
+    .status-summary-box { grid-template-columns: 1fr; }
   }
 `;
 
@@ -187,7 +223,7 @@ const SLACountdown = ({ ticket }) => {
 // MAIN COMPONENT
 // =======================================
 const SupportTickets = () => {
-  
+  const fileInputRef = useRef(null);
   const [userProfile, setUserProfile] = useState(null); 
   const [authLoading, setAuthLoading] = useState(true);
 
@@ -201,19 +237,25 @@ const SupportTickets = () => {
   // ANALYTICS & CAROUSEL STATE
   const [carouselIndex, setCarouselIndex] = useState(0);
 
-  // MODALS
+  // MODALS & CAROUSEL STATE
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [forwardModalOpen, setForwardModalOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [attachmentIndex, setAttachmentIndex] = useState(0);
+  
+  // ACTION STATES
   const [targetDept, setTargetDept] = useState('');
   const [targetPriority, setTargetPriority] = useState('');
   const [isForwarding, setIsForwarding] = useState(false);
   const [replyText, setReplyText] = useState('');
+  
+  // RESOLUTION IMAGE STATES
+  const [resolutionFile, setResolutionFile] = useState(null);
+  const [isUploadingResolution, setIsUploadingResolution] = useState(false);
+
   const [alert, setAlert] = useState(null);
 
-  // =======================================
-  // 2. AUTHENTICATION & TAB LOGIC
-  // =======================================
+  // AUTH & TAB LOGIC
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setAuthLoading(true);
@@ -235,13 +277,10 @@ const SupportTickets = () => {
               department: assignedDept 
             });
 
-            // Force non-admin to 'Pending' tab
             if (assignedDept !== 'All') {
               setActiveTab('Pending');
             }
-
           } else {
-            console.error("User logged in, but no profile found.");
             showAlert("Access Denied: User profile not found.", "danger");
           }
         } catch (error) {
@@ -253,38 +292,30 @@ const SupportTickets = () => {
       }
       setAuthLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
 
-  // =======================================
-  // 3. FETCH TICKETS
-  // =======================================
+  // FETCH TICKETS (MODIFIED FOR GLOBAL ANALYTICS)
   const fetchTickets = async () => {
     if (!userProfile || !userProfile.department) return;
-    
     setLoading(true);
     try {
       const ticketsRef = collection(db, 'supportTickets');
-      let q;
-
-      if (userProfile.department === 'All') {
-        q = ticketsRef;
-      } else {
-        // Staff filter
-        q = query(ticketsRef, where('department', '==', userProfile.department));
-      }
+      
+      // *** CHANGE: FETCH ALL TICKETS (NO FILTER HERE) FOR GLOBAL ANALYTICS ***
+      const q = ticketsRef; 
 
       const querySnapshot = await getDocs(q);
       const ticketsData = [];
       
       querySnapshot.forEach((docSnap) => {
         const data = docSnap.data();
+        
         const attachments = (data.attachments || []).map(att => ({
             ...att,
-            attachmentURL: att.type.startsWith('image/') 
-                ? `https://via.placeholder.com/150?text=${att.fileName || 'Img'}`
-                : null, 
+            attachmentURL: att.fileUrl || att.downloadURL || att.url || (att.type?.startsWith('image/') 
+                ? `https://via.placeholder.com/150?text=${att.name || 'Img'}`
+                : null), 
         }));
 
         const autoDepartment = data.department || CATEGORY_DEPT_MAP[data.issueCategory] || 'Online Shopping';
@@ -292,16 +323,23 @@ const SupportTickets = () => {
 
         ticketsData.push({
           id: docSnap.id,
-          ...data,
-          attachments,
-          userEmail: data.userEmail || data.email,
-          created: data.createdAt?.toDate?.().toLocaleString() || 'Unknown',
           subject: data.issueTitle || 'No Subject',
+          issueDescription: data.issueDescription || '',
+          branchLabel: data.branchLabel || 'N/A',
+          smBranch: data.smBranch || '',
+          userPhone: data.userPhone || 'N/A',
+          userEmail: data.userEmail || data.email,
           requester: data.userName || 'Unknown',
-          priority: data.priority || 'N/A', 
+          categoryLabel: data.categoryLabel || (catObj ? catObj.label : 'General'),
+          priority: data.priority || 'Unassigned', 
           status: data.status || 'open', 
           department: autoDepartment, 
-          categoryLabel: catObj ? catObj.label : 'General'
+          created: data.createdAt?.toDate?.().toLocaleString() || 'Unknown',
+          forwardedAt: data.forwardedAt || null,
+          resolvedAt: data.resolvedAt || null,
+          attachments: attachments,
+          agentReply: data.agentReply || '',
+          resolutionImageURL: data.resolutionImageURL || null
         });
       });
 
@@ -324,9 +362,9 @@ const SupportTickets = () => {
     setTimeout(() => setAlert(null), 4000);
   };
 
-  // =======================================
-  // 4. ANALYTICS LOGIC (Restored)
-  // =======================================
+  // ==============================================================
+  // 4. ANALYTICS LOGIC (GLOBAL)
+  // ==============================================================
   const analyticsData = useMemo(() => {
     if (tickets.length === 0) return null;
 
@@ -339,95 +377,132 @@ const SupportTickets = () => {
       }
     });
 
-    // 2. Average Resolution Time
+    // 2. Average Resolution Time (FILTERED BY DEPARTMENT)
     const deptTime = {};
     DEPARTMENTS.forEach(d => deptTime[d] = { totalHours: 0, count: 0 });
     
     tickets.forEach(t => {
       if (t.status === 'resolved' && t.department && t.resolvedAt && t.forwardedAt) {
-        const hours = (t.resolvedAt - t.forwardedAt) / (1000 * 60 * 60);
-        if (deptTime[t.department]) {
-          deptTime[t.department].totalHours += hours;
-          deptTime[t.department].count += 1;
+        const resolved = t.resolvedAt.toDate ? t.resolvedAt.toDate() : new Date(t.resolvedAt);
+        const forwarded = t.forwardedAt.toDate ? t.forwardedAt.toDate() : new Date(t.forwardedAt);
+        
+        const diffMs = resolved - forwarded;
+        
+        if (diffMs > 0 && deptTime[t.department]) {
+            const hours = diffMs / (1000 * 60 * 60);
+            deptTime[t.department].totalHours += hours;
+            deptTime[t.department].count += 1;
         }
       }
     });
 
+    // Calculate Average for each department
     const avgResolutionTime = {};
     Object.keys(deptTime).forEach(dept => {
       const data = deptTime[dept];
       avgResolutionTime[dept] = data.count > 0 ? (data.totalHours / data.count).toFixed(1) : 0;
     });
 
-    // 3. Most Common Categories
+    // 3. Top Categories
     const categoryCounts = {};
     tickets.forEach(t => {
       categoryCounts[t.categoryLabel] = (categoryCounts[t.categoryLabel] || 0) + 1;
     });
-    const topCategories = Object.entries(categoryCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
+    const topCategories = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
     return { deptResolved, avgResolutionTime, topCategories, totalTickets: tickets.length };
   }, [tickets]);
 
-  // Carousel Helpers
+  // Carousel Navigation Helpers
   const nextDept = () => setCarouselIndex((prev) => (prev + 1) % DEPARTMENTS.length);
   const prevDept = () => setCarouselIndex((prev) => (prev - 1 + DEPARTMENTS.length) % DEPARTMENTS.length);
   
-  const getCarouselData = () => {
-    if (!analyticsData) return { name: '', time: 0 };
-    const deptName = DEPARTMENTS[carouselIndex];
-    const timeVal = analyticsData.avgResolutionTime[deptName] || 0;
-    return { name: deptName, time: timeVal };
-  };
+  // Derived Carousel Data
+  const currentDeptName = DEPARTMENTS[carouselIndex];
+  const currentCarouselData = analyticsData ? {
+      name: currentDeptName,
+      time: analyticsData.avgResolutionTime[currentDeptName] || 0 
+  } : { name: '', time: 0 };
 
-  const currentCarouselData = getCarouselData();
-
-  // =======================================
-  // 5. FRONTEND FILTERING
-  // =======================================
+  // ==============================================================
+  // 5. FRONTEND FILTERING (TABLE VIEW RESTRICTION)
+  // ==============================================================
   const filteredTickets = useMemo(() => {
-    let result = [];
+    let result = tickets;
 
-    // Tab Filter
-    if (activeTab === 'New') {
-        result = tickets.filter(t => t.status === 'open' || (t.status === 'pending' && t.priority === 'N/A'));
-    } else if (activeTab === 'Pending') {
-        result = tickets.filter(t => t.status === 'pending' && t.priority !== 'N/A');
-    } else if (activeTab === 'Resolved') {
-        result = tickets.filter(t => t.status === 'resolved');
+    // 1. ROLE RESTRICTION: Non-Admins ONLY see their own department in the table
+    // (Analytics still sees everything because 'tickets' is not filtered here)
+    if (userProfile && userProfile.department !== 'All') {
+        result = result.filter(t => t.department === userProfile.department);
     }
 
-    // Explicit Department Filter (Dropdown)
+    // 2. Tab Filter
+    if (activeTab === 'New') {
+        result = result.filter(t => t.status === 'open' || (t.status === 'pending' && t.priority === 'Unassigned'));
+    } else if (activeTab === 'Pending') {
+        result = result.filter(t => t.status === 'pending' && t.priority !== 'Unassigned');
+    } else if (activeTab === 'Resolved') {
+        result = result.filter(t => t.status === 'resolved');
+    }
+
+    // 3. Dept Filter (for Admins)
     if (deptFilter !== 'All') {
         result = result.filter(t => t.department === deptFilter);
     }
 
-    // Search Filter
+    // 4. Search Filter
     if (searchQuery.trim() !== '') {
         const query = searchQuery.toLowerCase();
         result = result.filter(t => 
             t.subject.toLowerCase().includes(query) || 
             t.requester.toLowerCase().includes(query) || 
-            t.id.toLowerCase().includes(query)
+            t.id.toLowerCase().includes(query) ||
+            t.branchLabel.toLowerCase().includes(query)
         );
     }
-
     return result;
-  }, [tickets, activeTab, deptFilter, searchQuery]);
+  }, [tickets, activeTab, deptFilter, searchQuery, userProfile]);
 
   const renderPriority = (p) => (
     <span className={`priority-badge priority-${p.toLowerCase()}`}>{p}</span>
   );
 
-  // Actions
+  // ACTIONS
+  const openDetailsModal = (ticket) => {
+    setSelectedTicket(ticket);
+    setAttachmentIndex(0); 
+    setReplyText(''); 
+    setResolutionFile(null); 
+    setDetailsModalOpen(true);
+  };
+
   const openForwardModal = (ticket) => {
     setSelectedTicket(ticket);
     const autoDept = CATEGORY_DEPT_MAP[ticket.issueCategory] || 'Online Shopping';
     setTargetDept(autoDept);
     setTargetPriority('Medium');
     setForwardModalOpen(true);
+  };
+
+  // Handle file selection for resolution
+  const handleResolutionFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+        setResolutionFile(e.target.files[0]);
+    }
+  };
+
+  // Upload resolution image to Cloudinary
+  const uploadResolutionImage = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', UPLOAD_PRESET);
+
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+        method: 'POST', body: formData
+    });
+    if (!response.ok) throw new Error('Upload failed');
+    const data = await response.json();
+    return data.secure_url;
   };
 
   const confirmForward = async () => {
@@ -461,92 +536,97 @@ const SupportTickets = () => {
 
   const handleResolve = async () => {
     if (!replyText) return showAlert('Enter a note', 'warning');
+    setIsUploadingResolution(true);
+
     try {
+      let uploadedImageUrl = null;
+      if (resolutionFile) {
+         uploadedImageUrl = await uploadResolutionImage(resolutionFile);
+      }
+
       const templateParams = {
         userEmail: selectedTicket.userEmail,
         userName: selectedTicket.requester,
         issueTitle: selectedTicket.subject,
         department: selectedTicket.department,
-        agentReply: replyText
+        agentReply: replyText,
+        resolution_image: uploadedImageUrl ? `<br/><img src="${uploadedImageUrl}" alt="Resolution Proof" style="max-width:100%; border-radius:8px; margin-top:10px;" /><br/>` : ''
       };
+
       await emailjs.send(EMAIL_RESOLVE_SERVICE_ID, EMAIL_RESOLVE_TEMPLATE_ID, templateParams, EMAIL_RESOLVE_PUBLIC_KEY);
+      
       await updateDoc(doc(db, 'supportTickets', selectedTicket.id), {
         status: 'resolved',
         agentReply: replyText,
-        resolvedAt: serverTimestamp()
+        resolvedAt: serverTimestamp(),
+        resolutionImageURL: uploadedImageUrl || null
       });
-      setTickets(prev => prev.map(t => t.id === selectedTicket.id ? { ...t, status: 'resolved', agentReply: replyText } : t));
+
+      setTickets(prev => prev.map(t => t.id === selectedTicket.id ? { 
+          ...t, status: 'resolved', agentReply: replyText, resolvedAt: new Date(), resolutionImageURL: uploadedImageUrl
+      } : t));
+      
       showAlert('Ticket resolved', 'success');
       setDetailsModalOpen(false);
       setReplyText('');
+      setResolutionFile(null);
     } catch (e) {
       console.error(e);
-      showAlert('Error resolving', 'danger');
+      showAlert('Error resolving ticket', 'danger');
+    } finally {
+      setIsUploadingResolution(false);
     }
   };
 
-  // =======================================
-  // UI RENDER
-  // =======================================
-  if (authLoading) return <div style={{display:'flex',justifyContent:'center',alignItems:'center',height:'100vh'}}><Loader2 className="animate-spin" /> Loading User Profile...</div>;
-  
-  if (!userProfile) return (
-    <div style={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100vh', gap:'15px', background:'#f8fafc'}}>
-      <ShieldAlert size={48} color="#e11d48"/>
-      <h3>Access Required</h3>
-      <p style={{color:'#64748b'}}>Please log in to access the Support Dashboard.</p>
-    </div>
-  );
+  // CAROUSEL NAVIGATION (ATTACHMENTS)
+  const handleNext = () => {
+    if (!selectedTicket || !selectedTicket.attachments) return;
+    setAttachmentIndex((prev) => (prev + 1) % selectedTicket.attachments.length);
+  };
 
-  if (!userProfile.department) return (
-    <div style={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100vh', gap:'15px', background:'#fef2f2'}}>
-      <ShieldAlert size={48} color="#dc2626"/>
-      <h3 style={{color:'#991b1b'}}>Account Configuration Error</h3>
-      <p style={{color:'#7f1d1d'}}>Your account role (<strong>{userProfile.role}</strong>) is not assigned to a department.</p>
-      <p style={{fontSize:'12px', color:'#9ca3af'}}>Please contact your system administrator.</p>
-    </div>
-  );
+  const handlePrev = () => {
+    if (!selectedTicket || !selectedTicket.attachments) return;
+    setAttachmentIndex((prev) => (prev - 1 + selectedTicket.attachments.length) % selectedTicket.attachments.length);
+  };
+
+  if (authLoading) return <div style={{display:'flex',justifyContent:'center',alignItems:'center',height:'100vh'}}><Loader2 className="animate-spin" /> Loading User Profile...</div>;
+  if (!userProfile) return <div style={{padding:50, textAlign:'center'}}>Access Required</div>;
 
   return (
     <div className="support-tickets-wrapper">
       <style>{styles}</style>
       {alert && <div className="custom-alert" style={{ backgroundColor: alert.type === 'success' ? '#10B981' : '#EF4444' }}>{alert.msg}</div>}
 
-      {/* ANALYTICS DASHBOARD (RESTORED) */}
+      {/* ANALYTICS DASHBOARD - GLOBAL STATS */}
       {analyticsData && (
         <div className="analytics-grid">
             <div className="stat-card">
-                <div className="stat-title"><CheckSquare size={16}/> Resolved by Department</div>
+                <div className="stat-title"><CheckSquare size={16}/> Resolved by Dept</div>
                 {Object.entries(analyticsData.deptResolved).map(([dept, count]) => (
                         <div key={dept} className="chart-row">
                         <div className="chart-label">{dept}</div>
-                        <div className="chart-bar-bg">
-                            <div className="chart-bar-fill" style={{width: `${(count / Math.max(...Object.values(analyticsData.deptResolved), 1)) * 100}%`, background: 'var(--success-color)'}}></div>
-                        </div>
+                        <div className="chart-bar-bg"><div className="chart-bar-fill" style={{width: `${(count / Math.max(...Object.values(analyticsData.deptResolved), 1)) * 100}%`, background: 'var(--success-color)'}}></div></div>
                         <div className="chart-value">{count}</div>
                         </div>
                 ))}
             </div>
-
+            
+            {/* CAROUSEL CARD - RESPONSE TIME PER DEPT */}
             <div className="stat-card carousel-card">
                  <div className="carousel-header">
                      <span className="carousel-label"><Clock size={12} style={{display:'inline', marginRight:4}}/> Response Time</span>
                      <span className="carousel-dept-name">{currentCarouselData.name}</span>
                  </div>
-                 
                  <div style={{flex:1, display:'flex', flexDirection:'column', justifyContent:'center'}}>
                      <div className="carousel-body">
-                         <div className="time-icon-wrapper">
-                             <Timer size={24} />
-                         </div>
+                         <div className="time-icon-wrapper"><Timer size={24} /></div>
                          <div>
                              <span className="carousel-value-lg">{currentCarouselData.time}</span>
                              <span className="carousel-unit">hrs</span>
                          </div>
                      </div>
-                     <div className="carousel-desc">Avg time to resolve tickets</div>
+                     <div className="carousel-desc">Global average for this dept</div>
                  </div>
-
                  <div className="carousel-nav">
                      <button className="nav-btn" onClick={prevDept}><ChevronLeft size={16}/></button>
                      <div style={{fontSize:'12px', color:'#a0aec0', fontWeight:'600'}}>{carouselIndex + 1} / {DEPARTMENTS.length}</div>
@@ -555,13 +635,11 @@ const SupportTickets = () => {
             </div>
 
             <div className="stat-card">
-                <div className="stat-title"><TrendingUp size={16}/> Top Issue Categories</div>
+                <div className="stat-title"><TrendingUp size={16}/> Top Categories</div>
                 {analyticsData.topCategories.map(([cat, count]) => (
                         <div key={cat} className="chart-row">
                         <div className="chart-label" style={{width:'140px'}}>{cat}</div>
-                        <div className="chart-bar-bg">
-                            <div className="chart-bar-fill" style={{width: `${(count / analyticsData.totalTickets) * 100}%`, background: 'var(--warning-color)'}}></div>
-                        </div>
+                        <div className="chart-bar-bg"><div className="chart-bar-fill" style={{width: `${(count / analyticsData.totalTickets) * 100}%`, background: 'var(--warning-color)'}}></div></div>
                         <div className="chart-value">{count}</div>
                         </div>
                 ))}
@@ -569,89 +647,66 @@ const SupportTickets = () => {
         </div>
       )}
 
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px'}}>
-        <div className="tabs-container" style={{marginBottom:0, borderBottom:'none'}}>
-          
-          {/* TAB VISIBILITY LOGIC */}
-          {/* ONLY ADMIN (All) can see 'New Requests' */}
-          {userProfile.department === 'All' && (
-            <button className={`tab-btn ${activeTab === 'New' ? 'active' : ''}`} onClick={() => setActiveTab('New')}>
-              New <span className="tab-count">{tickets.filter(t => t.status === 'open').length}</span>
-            </button>
-          )}
+      {/* TABS & TOOLBAR - RESTRICTED VIEW */}
+      <div className="tabs-container">
+        {/* NEW TAB: Status is 'open' OR (Status is 'pending' AND Priority is 'Unassigned') */}
+        {userProfile.department === 'All' && (
+          <button 
+            className={`tab-btn ${activeTab === 'New' ? 'active' : ''}`} 
+            onClick={() => setActiveTab('New')}
+          >
+            New 
+            <span className="tab-count">
+              {tickets.filter(t => t.status === 'open' || (t.status === 'pending' && t.priority === 'Unassigned')).length}
+            </span>
+          </button>
+        )}
 
-          <button className={`tab-btn ${activeTab === 'Pending' ? 'active' : ''}`} onClick={() => setActiveTab('Pending')}>
-            Pending <span className="tab-count">{tickets.filter(t => t.status === 'pending').length}</span>
-          </button>
-          <button className={`tab-btn ${activeTab === 'Resolved' ? 'active' : ''}`} onClick={() => setActiveTab('Resolved')}>
-            Resolved <span className="tab-count">{tickets.filter(t => t.status === 'resolved').length}</span>
-          </button>
-        </div>
-        
-        {/* USER INFO REMOVED */}
+        {/* PENDING TAB: Status is 'pending' AND Priority is NOT 'Unassigned' */}
+        <button 
+          className={`tab-btn ${activeTab === 'Pending' ? 'active' : ''}`} 
+          onClick={() => setActiveTab('Pending')}
+        >
+          Pending 
+          <span className="tab-count">
+            {/* FIX: Ensure we count ALL pending tickets that are NOT new */}
+            {tickets.filter(t => t.status === 'pending' && t.priority !== 'Unassigned').length}
+          </span>
+        </button>
+
+        {/* RESOLVED TAB: Status is 'resolved' */}
+        <button 
+          className={`tab-btn ${activeTab === 'Resolved' ? 'active' : ''}`} 
+          onClick={() => setActiveTab('Resolved')}
+        >
+          Resolved 
+          <span className="tab-count">
+            {tickets.filter(t => t.status === 'resolved').length}
+          </span>
+        </button>
       </div>
-
-      <div style={{width:'100%', height:'2px', background:'var(--text-secondary)', marginBottom:'25px'}}></div>
 
       <div className="content-card">
         <div className="toolbar">
-            <div style={{position:'relative'}}>
-                <Search size={16} style={{position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#999'}}/>
-                <input type="text" className="search-input" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-            </div>
-
-            {/* ADMIN FILTER DROPDOWN */}
-            {userProfile.department === 'All' ? (
-              <div style={{position:'relative'}}>
-                  <Filter size={16} style={{position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#999'}}/>
-                  <select className="filter-select" value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}>
-                      <option value="All">All Departments</option>
-                      {DEPARTMENTS.map(dept => <option key={dept} value={dept}>{dept}</option>)}
-                  </select>
-              </div>
-            ) : (
-              <div style={{padding:'8px 15px', background:'#f1f5f9', borderRadius:'8px', fontSize:'13px', fontWeight:'600', color:'#475569', display:'flex', alignItems:'center', gap:'6px'}}>
-                  <Building2 size={14}/> {userProfile.department} View Only
-              </div>
+            <div style={{position:'relative'}}><Search size={16} style={{position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#999'}}/><input type="text" className="search-input" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div>
+            {userProfile.department === 'All' && (
+              <div style={{position:'relative'}}><Filter size={16} style={{position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#999'}}/><select className="filter-select" value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}><option value="All">All Departments</option>{DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
             )}
-
-            <button className="action-btn" onClick={fetchTickets}>
-                {loading ? <Loader2 className="animate-spin" size={14}/> : <RefreshCw size={14}/>} Refresh
-            </button>
+            <button className="action-btn" onClick={fetchTickets}>{loading ? <Loader2 className="animate-spin" size={14}/> : <RefreshCw size={14}/>} Refresh</button>
         </div>
-
+        
         <div style={{overflowX: 'auto'}}>
           <table className="ticket-table">
             <thead>
-              <tr>
-                <th>ID</th><th>Subject</th><th>Category</th><th>Requester</th>
-                {activeTab !== 'New' && <th>Priority</th>}
-                {activeTab !== 'New' && <th>Department</th>}
-                {activeTab === 'New' && <th>Created</th>}
-                {activeTab === 'Pending' && <th>SLA</th>}
-                <th>Action</th>
-              </tr>
+              <tr><th>ID</th><th>Subject</th><th>Category</th><th>Requester</th>{activeTab !== 'New' && <th>Priority</th>}{activeTab !== 'New' && <th>Department</th>}{activeTab === 'New' && <th>Created</th>}{activeTab === 'Pending' && <th>SLA</th>}<th>Action</th></tr>
             </thead>
             <tbody>
-              {loading ? (
-                <tr><td colSpan="9" style={{textAlign:'center', padding:'30px'}}>Loading tickets from database...</td></tr>
-              ) : filteredTickets.length === 0 ? (
-                <tr><td colSpan="9" style={{textAlign:'center', padding:'30px', color:'#999'}}>No tickets found in this tab.</td></tr>
-              ) : (
+              {filteredTickets.length === 0 ? <tr><td colSpan="9" style={{textAlign:'center', padding:'30px', color:'#999'}}>No tickets found.</td></tr> : (
                 filteredTickets.map(ticket => (
-                    <tr key={ticket.id} onClick={() => { setSelectedTicket(ticket); setDetailsModalOpen(true); }} className={ticket.priority === 'High' ? 'ticket-row-danger' : ''}>
-                      <td>#{ticket.id.substring(0,6)}</td>
-                      <td>{ticket.subject}</td>
-                      <td><span style={{fontSize:'12px', background:'#eee', padding:'2px 8px', borderRadius:'6px'}}>{ticket.categoryLabel}</span></td>
-                      <td>{ticket.requester}</td>
-                      {activeTab !== 'New' && <td>{renderPriority(ticket.priority)}</td>}
-                      {activeTab !== 'New' && <td>{ticket.department}</td>}
-                      {activeTab === 'New' && <td>{ticket.created.split(',')[0]}</td>}
-                      {activeTab === 'Pending' && <td><SLACountdown ticket={ticket} /></td>}
-                      <td>
-                        {activeTab === 'New' && <button className="action-btn" onClick={(e) => { e.stopPropagation(); openForwardModal(ticket); }}><Send size={14}/> Forward</button>}
-                        {activeTab !== 'New' && <button className="action-btn" style={{backgroundColor:'var(--bg-secondary)', color:'var(--text-primary)'}}><Eye size={14}/> View</button>}
-                      </td>
+                    <tr key={ticket.id} onClick={() => openDetailsModal(ticket)} className={ticket.priority === 'High' ? 'ticket-row-danger' : ''}>
+                      <td>#{ticket.id.substring(0,6)}</td><td>{ticket.subject}</td><td><span style={{fontSize:'12px', background:'#eee', padding:'2px 8px', borderRadius:'6px'}}>{ticket.categoryLabel}</span></td><td>{ticket.requester}</td>
+                      {activeTab !== 'New' && <td>{renderPriority(ticket.priority)}</td>}{activeTab !== 'New' && <td>{ticket.department}</td>}{activeTab === 'New' && <td>{ticket.created.split(',')[0]}</td>}{activeTab === 'Pending' && <td><SLACountdown ticket={ticket} /></td>}
+                      <td>{activeTab === 'New' ? <button className="action-btn" onClick={(e) => { e.stopPropagation(); openForwardModal(ticket); }}><Send size={14}/> Forward</button> : <button className="action-btn" style={{backgroundColor:'var(--bg-secondary)', color:'var(--text-primary)'}}><Eye size={14}/> View</button>}</td>
                     </tr>
                 ))
               )}
@@ -663,53 +718,206 @@ const SupportTickets = () => {
       {/* FORWARD MODAL */}
       {forwardModalOpen && selectedTicket && (
         <div className="modal-overlay" onClick={() => setForwardModalOpen(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <h3>Forward Ticket</h3>
-            <div className="form-group" style={{marginTop:'20px'}}>
-               <label>Department</label>
-               <select className="form-select" value={targetDept} onChange={e => setTargetDept(e.target.value)}>
-                 {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-               </select>
-            </div>
-            <div className="form-group">
-               <label>Priority</label>
-               <select className="form-select" value={targetPriority} onChange={e => setTargetPriority(e.target.value)}>
-                 <option value="" disabled>Select...</option>
-                 {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
-               </select>
-            </div>
-            <div style={{display:'flex',justifyContent:'flex-end', gap:'10px', marginTop:'20px'}}>
-              <button className="action-btn" style={{background:'#999'}} onClick={() => setForwardModalOpen(false)}>Cancel</button>
-              <button className="action-btn" onClick={confirmForward} disabled={isForwarding}>{isForwarding ? 'Sending...' : 'Confirm'}</button>
-            </div>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{width:'500px'}}>
+            <div style={{display:'flex', justifyContent:'space-between', marginBottom:'20px'}}><h3>Forward Ticket</h3><X onClick={() => setForwardModalOpen(false)} style={{cursor:'pointer'}}/></div>
+            <div style={{padding:'15px', background:'#f8fafc', borderRadius:'8px', marginBottom:'20px'}}><strong>{selectedTicket.subject}</strong><div style={{fontSize:'12px', color:'#64748b'}}>From: {selectedTicket.requester}</div></div>
+            <div className="form-group" style={{marginBottom:'15px'}}><label style={{display:'block', marginBottom:'5px', fontSize:'12px', fontWeight:'600'}}>Department</label><select className="form-select" value={targetDept} onChange={e => setTargetDept(e.target.value)}>{DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
+            <div className="form-group"><label style={{display:'block', marginBottom:'5px', fontSize:'12px', fontWeight:'600'}}>Priority</label><select className="form-select" value={targetPriority} onChange={e => setTargetPriority(e.target.value)}><option value="" disabled>Select...</option>{PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
+            <div style={{display:'flex',justifyContent:'flex-end', gap:'10px', marginTop:'20px'}}><button className="action-btn" onClick={confirmForward} disabled={isForwarding}>{isForwarding ? 'Sending...' : 'Confirm'}</button></div>
           </div>
         </div>
       )}
 
-      {/* DETAILS MODAL */}
+      {/* === DETAIL MODAL === */}
       {detailsModalOpen && selectedTicket && (
          <div className="modal-overlay" onClick={() => setDetailsModalOpen(false)}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
-              <div style={{display:'flex', justifyContent:'space-between'}}><h3>Ticket Details</h3><X onClick={() => setDetailsModalOpen(false)} style={{cursor:'pointer'}}/></div>
-              <div style={{background:'#f8fafc', padding:'15px', borderRadius:'8px', margin:'15px 0'}}>
-                 <h4>{selectedTicket.subject}</h4>
-                 <p style={{marginTop:'10px', fontSize:'14px', color:'#555'}}>{selectedTicket.description}</p>
-                 {selectedTicket.attachments && selectedTicket.attachments.length > 0 && selectedTicket.attachments[0].attachmentURL && (
-                   <img src={selectedTicket.attachments[0].attachmentURL} style={{width:'100px', height:'100px', objectFit:'cover', marginTop:'10px', borderRadius:'8px'}} />
-                 )}
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
+                 <div className="detail-header-meta">#{selectedTicket.id} • {selectedTicket.created}</div>
+                 <X size={24} style={{cursor:'pointer', color:'#9ca3af'}} onClick={() => setDetailsModalOpen(false)}/>
               </div>
-              
-              {selectedTicket.status !== 'resolved' && activeTab === 'Pending' && (
-                 <div>
-                    <textarea placeholder="Resolution note..." style={{width:'100%', padding:'10px', borderRadius:'8px', border:'1px solid #ddd'}} value={replyText} onChange={e => setReplyText(e.target.value)} />
-                    <button className="action-btn" style={{marginTop:'10px', background:'var(--success-color)'}} onClick={handleResolve}>Resolve Ticket</button>
-                 </div>
+              <div className="detail-subject">{selectedTicket.subject}</div>
+
+              {/* CONTACT GRID */}
+              <div className="contact-grid">
+                  <div className="contact-item">
+                      <span className="contact-label">Requester</span>
+                      <span className="contact-value"><User size={14}/> {selectedTicket.requester}</span>
+                  </div>
+                  <div className="contact-item">
+                      <span className="contact-label">Contact Email</span>
+                      <span className="contact-value" style={{color:'var(--accent-primary)'}}>{selectedTicket.userEmail}</span>
+                  </div>
+                  <div className="contact-item">
+                      <span className="contact-label">Branch Location</span>
+                      <span className="contact-value"><MapPin size={14}/> {selectedTicket.branchLabel}</span>
+                  </div>
+                  <div className="contact-item">
+                      <span className="contact-label">Phone Number</span>
+                      <span className="contact-value"><Phone size={14}/> {selectedTicket.userPhone}</span>
+                  </div>
+              </div>
+
+              {/* STATUS BAR */}
+              <div className="status-summary-box">
+                  <div className="contact-item">
+                     <span className="contact-label">Status</span>
+                     <span className="contact-value" style={{textTransform:'capitalize'}}>
+                        {selectedTicket.status === 'resolved' ? <CheckCircle size={14} color="var(--success-color)"/> : <Clock size={14}/>}
+                        {selectedTicket.status}
+                     </span>
+                  </div>
+                  <div className="contact-item">
+                     <span className="contact-label">Department</span>
+                     <span className="contact-value"><Building2 size={14}/> {selectedTicket.department}</span>
+                  </div>
+                  <div className="contact-item">
+                     <span className="contact-label">Priority</span>
+                     <span className="contact-value">
+                        {selectedTicket.priority && selectedTicket.priority !== 'N/A' && selectedTicket.priority !== 'Unassigned' ? (
+                            <span style={{color: selectedTicket.priority === 'High' ? '#EF4444' : '#F59E0B', fontWeight:600}}>{selectedTicket.priority}</span>
+                        ) : 'Unassigned'}
+                     </span>
+                  </div>
+              </div>
+
+              {/* DESCRIPTION */}
+              <div style={{marginBottom:'25px'}}>
+                  <div className="contact-label">Issue Description</div>
+                  <div className="desc-box">{selectedTicket.issueDescription}</div>
+              </div>
+
+              {/* ATTACHMENTS CAROUSEL */}
+              {selectedTicket.attachments && selectedTicket.attachments.length > 0 && (
+                  <div style={{marginBottom:'25px'}}>
+                      <div className="contact-label">Attachments ({selectedTicket.attachments.length})</div>
+                      
+                      {/* CAROUSEL WRAPPER */}
+                      <div className="carousel-container">
+                          {selectedTicket.attachments.length > 1 && (
+                              <button className="carousel-nav-btn left" onClick={handlePrev}><ChevronLeft size={20}/></button>
+                          )}
+
+                          <div className="carousel-slide">
+                              {(() => {
+                                  const att = selectedTicket.attachments[attachmentIndex];
+                                  if (att.type?.startsWith('image') && att.attachmentURL) {
+                                      return (
+                                          <a href={att.attachmentURL} target="_blank" rel="noreferrer" style={{width:'100%', height:'100%', display:'flex', justifyContent:'center'}}>
+                                              <img src={att.attachmentURL} alt={att.name} className="carousel-image"/>
+                                          </a>
+                                      );
+                                  } else {
+                                      return (
+                                          <div className="carousel-file-card">
+                                              <FileText size={48} color="#94a3b8"/>
+                                              <div style={{fontWeight:600}}>{att.name}</div>
+                                              <a href={att.attachmentURL} target="_blank" rel="noreferrer" className="action-btn"><Download size={14}/> Download File</a>
+                                          </div>
+                                      );
+                                  }
+                              })()}
+                          </div>
+
+                          {selectedTicket.attachments.length > 1 && (
+                              <button className="carousel-nav-btn right" onClick={handleNext}><ChevronRight size={20}/></button>
+                          )}
+                      </div>
+
+                      {/* META FOOTER FOR CAROUSEL */}
+                      <div className="carousel-footer">
+                          <div style={{fontSize:'12px', color:'#64748b'}}>
+                              {selectedTicket.attachments[attachmentIndex].name} 
+                              <span style={{marginLeft:'8px', color:'#94a3b8'}}>({Math.round(selectedTicket.attachments[attachmentIndex].size / 1024)} KB)</span>
+                          </div>
+                          {selectedTicket.attachments.length > 1 && (
+                              <div className="carousel-indicators">
+                                  {selectedTicket.attachments.map((_, idx) => (
+                                      <div key={idx} className={`carousel-dot ${idx === attachmentIndex ? 'active' : ''}`} onClick={() => setAttachmentIndex(idx)}/>
+                                  ))}
+                              </div>
+                          )}
+                      </div>
+                  </div>
               )}
+
+              <div style={{borderBottom:'1px dashed #e2e8f0', margin:'20px 0'}}></div>
+
+              {/* RESOLUTION ACTION (RESOLVED STATE) */}
+              {selectedTicket.status === 'resolved' ? (
+                  <div style={{background:'rgba(16, 185, 129, 0.1)', border:'1px solid var(--success-color)', borderRadius:'8px', padding:'20px'}}>
+                      <div style={{display:'flex', alignItems:'center', gap:'8px', color:'var(--success-color)', fontWeight:'600', marginBottom:'15px', fontSize:'15px'}}>
+                          <CheckCircle size={20}/> Issue Resolved
+                      </div>
+                      
+                      <div className="contact-label" style={{color:'#065f46'}}>Agent Resolution Note</div>
+                      <div style={{fontSize:'14px', color:'#064e3b', margin:'5px 0 15px 0', whiteSpace:'pre-wrap'}}>{selectedTicket.agentReply}</div>
+                      
+                      {/* DISPLAY RESOLUTION IMAGE IF EXISTS */}
+                      {selectedTicket.resolutionImageURL && (
+                        <div style={{marginBottom:'15px'}}>
+                          <div className="contact-label" style={{color:'#065f46', marginBottom:'5px'}}>Proof of Resolution</div>
+                          <a href={selectedTicket.resolutionImageURL} target="_blank" rel="noreferrer">
+                            <img src={selectedTicket.resolutionImageURL} alt="Resolution Proof" style={{maxWidth:'100%', maxHeight:'200px', borderRadius:'8px', border:'1px solid #a7f3d0'}} />
+                          </a>
+                        </div>
+                      )}
+
+                      <div style={{textAlign:'right', fontSize:'12px', color:'#065f46'}}>
+                        Resolved on: {selectedTicket.resolvedAt?.toDate?.().toLocaleString()}
+                      </div>
+                  </div>
+              ) : activeTab === 'Pending' ? (
+                  /* RESOLUTION ACTION (PENDING STATE) */
+                  <div>
+                      <div className="contact-label">Resolution Action</div>
+                      <textarea 
+                        className="desc-box" 
+                        style={{width:'100%', marginBottom:'10px', background:'#fff'}} 
+                        placeholder="Type the resolution note here to send to the user..."
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                      />
+                      
+                      {/* RESOLUTION IMAGE UPLOAD */}
+                      <div className="resolution-upload-container" style={{marginBottom:'20px'}}>
+                         <div className="upload-btn-wrapper">
+                           <button className="upload-btn">
+                             <ImageIcon size={16}/> Attach Proof (Optional)
+                           </button>
+                           <input 
+                             type="file" 
+                             accept="image/png, image/jpeg, image/jpg"
+                             onChange={handleResolutionFileChange}
+                             ref={fileInputRef}
+                           />
+                         </div>
+                         
+                         {resolutionFile && (
+                           <div className="preview-container">
+                             <img src={URL.createObjectURL(resolutionFile)} alt="Preview" className="preview-image" />
+                             <div className="remove-preview" onClick={() => { setResolutionFile(null); fileInputRef.current.value = null; }}>
+                               <Trash2 size={12}/>
+                             </div>
+                           </div>
+                         )}
+                      </div>
+
+                      <div style={{display:'flex', justifyContent:'flex-end'}}>
+                          <button className="action-btn" style={{background:'var(--success-color)', padding:'10px 20px'}} onClick={handleResolve} disabled={isUploadingResolution}>
+                              {isUploadingResolution ? <Loader2 className="animate-spin" size={16}/> : <CheckCircle size={16}/>} 
+                              {isUploadingResolution ? ' Uploading & Resolving...' : ' Mark as Resolved & Notify User'}
+                          </button>
+                      </div>
+                  </div>
+              ) : null}
+
             </div>
          </div>
       )}
+
     </div>
   );
 };
 
-export default SupportTickets;
+export default SupportTickets;  
