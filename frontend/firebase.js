@@ -12,17 +12,8 @@ const firebaseConfig = {
   measurementId: "G-5DLQ3P9131"
 };
 
-console.log('Initializing Firebase...');
-
 const app = initializeApp(firebaseConfig);
-console.log('Firebase app initialized:', app);
 
 export const auth = getAuth(app);
-console.log('Auth initialized:', auth);
-
 export const db = getFirestore(app);
-console.log('Firestore initialized:', db);
-
-console.log('Firebase setup complete');
-
 export default app;

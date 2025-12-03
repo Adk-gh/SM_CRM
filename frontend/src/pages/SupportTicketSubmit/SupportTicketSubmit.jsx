@@ -3,11 +3,11 @@ import {
   Ticket, User, Mail, Phone, MapPin, 
   AlertCircle, FileText, Paperclip, Send, 
   CheckCircle, Loader2, X, AlertTriangle,
-  Moon, Sun 
+  Moon, Sun, MoreHorizontal
 } from 'lucide-react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-// Keeping your original import path
-import { db } from '../../../firebase'; 
+
+// NOTE: We removed 'addDoc' and 'db' imports because we are now writing via the Vercel API
+import ReCAPTCHA from "react-google-recaptcha";
 
 const SM_BRANCHES = [
   { value: 'sm-san-pablo', label: 'SM City San Pablo' }
@@ -20,15 +20,18 @@ const ISSUE_CATEGORIES = [
   { value: 'stock_issue', label: 'Inventory Stock Issue', icon: '📦' },
   { value: 'feature', label: 'Feature Request', icon: '✨' },
   { value: 'bug', label: 'Report a Bug', icon: '🐛' },
-  { value: 'general', label: 'General Inquiry', icon: '❓' }
+  { value: 'general', label: 'General Inquiry', icon: '❓' },
+  // ADDED: Others Category
+  { value: 'others', label: 'Others / Unspecified', icon: '🔹' }
 ];
 
 const SupportTicketSubmit = () => {
   const fileInputRef = useRef(null);
+  const captchaRef = useRef(null);
+
   const [theme, setTheme] = useState(localStorage.getItem('sm-theme') || 'light');
 
   useEffect(() => {
-    // We keep this to ensure the body attribute is set for any global CSS
     document.body.setAttribute('data-theme', theme);
     localStorage.setItem('sm-theme', theme);
   }, [theme]);
@@ -55,6 +58,8 @@ const SupportTicketSubmit = () => {
     dragActive: false,
     message: null
   });
+
+  const [captchaToken, setCaptchaToken] = useState(null);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -95,10 +100,14 @@ const SupportTicketSubmit = () => {
     }
   };
 
+  const onCaptchaChange = (token) => {
+    setCaptchaToken(token);
+  };
+
   // --- CLOUDINARY UPLOAD FUNCTION ---
   const uploadFileToCloudinary = async (file) => {
-    const cloudName = "dc7etbsfe";       // Your Cloud Name
-    const uploadPreset = "image_upload"; // Your Upload Preset
+    const cloudName = "dc7etbsfe";
+    const uploadPreset = "image_upload";
 
     const formData = new FormData();
     formData.append('file', file);
@@ -135,9 +144,20 @@ const SupportTicketSubmit = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // 1. Check if Captcha is solved on Client Side
+    if (!captchaToken) {
+        setUiState(prev => ({
+            ...prev,
+            message: { type: 'error', text: 'Please complete the reCAPTCHA check.' }
+        }));
+        return;
+    }
+
     setUiState(prev => ({ ...prev, loading: true, message: null }));
 
     try {
+      // 2. Upload Attachments (Client Side)
       let uploadedAttachments = [];
       if (formData.files.length > 0) {
         uploadedAttachments = await Promise.all(
@@ -145,7 +165,9 @@ const SupportTicketSubmit = () => {
         );
       }
 
-      const ticketData = {
+      // 3. Prepare Payload
+      // Note: We are sending 'captchaToken' to the server for verification
+      const ticketPayload = {
         userName: formData.userName,
         userEmail: formData.userEmail,
         userPhone: formData.userPhone,
@@ -154,24 +176,36 @@ const SupportTicketSubmit = () => {
         issueCategory: formData.issueCategory,
         issueTitle: formData.issueTitle,
         issueDescription: formData.issueDescription,
-        status: 'open',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        attachments: uploadedAttachments, 
         categoryLabel: ISSUE_CATEGORIES.find(cat => cat.value === formData.issueCategory)?.label || 'N/A',
+        attachments: uploadedAttachments,
+
+        // IMPORTANT: Send the token to Vercel
+        captchaToken: captchaToken
       };
 
-      const docRef = await addDoc(collection(db, 'supportTickets'), ticketData);
-      const newTicketId = docRef.id;
+      // 4. Send to Vercel API Route
+      const response = await fetch('/api/submitTicket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ticketPayload)
+      });
 
+      const result = await response.json();
+
+      if (!response.ok) {
+        // This handles if the Server says "Captcha Invalid"
+        throw new Error(result.message || 'Server validation failed');
+      }
+
+      // 5. Success
       setUiState({
         loading: false,
         submitted: true,
-        ticketId: newTicketId,
+        ticketId: result.id, // The ID returned by Vercel
         dragActive: false,
         message: { 
           type: 'success', 
-          text: `Ticket ${newTicketId} submitted successfully! We'll get back to you soon.` 
+          text: `Ticket ${result.id} submitted successfully! We'll get back to you soon.`
         }
       });
 
@@ -180,10 +214,11 @@ const SupportTicketSubmit = () => {
       
       let errorMessage = 'Failed to submit ticket. Please try again.';
       
-      if (error.code === 'permission-denied') {
-        errorMessage = 'Database permission denied.';
-      } else if (error.message.includes('Cloudinary')) {
+      if (error.message.includes('Cloudinary')) {
         errorMessage = 'Image upload failed. Please try a smaller image.';
+      } else if (error.message) {
+        // Use the error message from the server (e.g. "Captcha verification failed")
+        errorMessage = error.message;
       }
       
       setUiState(prev => ({
@@ -215,6 +250,10 @@ const SupportTicketSubmit = () => {
       dragActive: false,
       message: null
     });
+    setCaptchaToken(null);
+    if (captchaRef.current) {
+        captchaRef.current.reset();
+    }
   };
 
   const MessageNotification = ({ message, onDismiss }) => {
@@ -240,7 +279,6 @@ const SupportTicketSubmit = () => {
     );
   };
 
-  // Add keyframes for slideIn animation
   useEffect(() => {
     const styleSheet = document.createElement("style");
     styleSheet.innerText = `
@@ -253,12 +291,11 @@ const SupportTicketSubmit = () => {
     return () => document.head.removeChild(styleSheet);
   }, []);
 
-  // Common Styles (Tailwind Classes)
+  // Common Styles
   const inputClasses = "w-full px-4 py-3 border border-[#D1D5DB] dark:border-[#4A5568] rounded-xl text-base bg-white dark:bg-[#1E2A38] text-[#395A7F] dark:text-[#E9ECEE] placeholder-gray-500 dark:placeholder-gray-500 focus:outline-none focus:ring-[3px] focus:ring-[#395A7F]/10 focus:border-[#395A7F] dark:focus:border-[#63B3ED] hover:border-[#A0AEC0] transition-all shadow-sm";
   const labelClasses = "text-sm font-semibold text-[#57789B] dark:text-[#A3CAE9] mb-2 tracking-wide block";
   const sectionTitleClasses = "text-[1.4rem] font-bold text-[#395A7F] dark:text-[#E9ECEE] mb-6 flex items-center gap-3 pb-3 border-b-2 border-[#A3CAE9] dark:border-[#4299E1]";
 
-  // --- RENDER ---
   return (
     <div className={theme === 'dark' ? 'dark' : ''}>
       <div className="min-h-screen flex flex-col items-center justify-center p-5 font-sans bg-gradient-to-br from-[#F4F4F4] to-[#A3CAE9] dark:from-[#1E2A38] dark:to-[#2C3E50] text-[#395A7F] dark:text-[#E9ECEE] transition-colors duration-300">
@@ -338,7 +375,7 @@ const SupportTicketSubmit = () => {
                   </div>
                 </div>
 
-                <button 
+                <button
                   onClick={resetForm}
                   className="w-full max-w-[300px] rounded-xl border-none bg-gradient-to-br from-[#48BB78] to-[#389E62] dark:from-[#68D391] dark:to-[#68D391] text-white text-base font-semibold px-8 py-4 shadow-[0_4px_12px_rgba(72,187,120,0.2)] hover:shadow-[0_6px_20px_rgba(72,187,120,0.3)] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
                 >
@@ -445,7 +482,7 @@ const SupportTicketSubmit = () => {
                             </option>
                           ))}
                         </select>
-                         <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500">
+                          <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500">
                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                         </div>
                       </div>
@@ -535,16 +572,32 @@ const SupportTicketSubmit = () => {
                   </div>
                 </div>
 
+                {/* reCAPTCHA Section */}
+                <div className="mt-8 flex justify-center w-full">
+                    <ReCAPTCHA
+                        ref={captchaRef}
+                        // =========================================================
+                        // TODO: REPLACE THIS PLACEHOLDER WITH YOUR NEW SITE KEY
+                        // =========================================================
+                        sitekey="6Lckzh8sAAAAAEiYWwLi8UJyLG8jOqQ3tPWi5-nQ"
+                        onChange={onCaptchaChange}
+                        theme={theme === 'dark' ? 'dark' : 'light'}
+                    />
+                </div>
+
                 {/* Submit Button */}
                 <button 
                   type="submit" 
-                  disabled={uiState.loading}
+                  // Disable if no captcha token OR if loading
+                  disabled={!captchaToken || uiState.loading}
                   className={`
                     mt-6 w-full flex items-center justify-center gap-2.5 rounded-xl border-none 
                     bg-gradient-to-br from-[#395A7F] to-[#2F4D69] dark:from-[#63B3ED] dark:to-[#4299E1]
                     text-white text-base font-semibold px-8 py-4 tracking-wide cursor-pointer transition-all duration-300
                     shadow-[0_4px_12px_rgba(57,90,127,0.2)]
-                    ${uiState.loading ? 'opacity-60 cursor-not-allowed' : 'hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(57,90,127,0.3)] hover:bg-gradient-to-br hover:from-[#6E9FC1] hover:to-[#395A7F] dark:hover:from-[#68D391] dark:hover:to-[#63B3ED]'}
+                    ${(!captchaToken || uiState.loading)
+                        ? 'opacity-60 cursor-not-allowed grayscale'
+                        : 'hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(57,90,127,0.3)] hover:bg-gradient-to-br hover:from-[#6E9FC1] hover:to-[#395A7F] dark:hover:from-[#68D391] dark:hover:to-[#63B3ED]'}
                   `}
                 >
                   {uiState.loading ? (

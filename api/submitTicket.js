@@ -2,7 +2,7 @@ const fetch = require('node-fetch');
 const admin = require('firebase-admin');
 
 // -------------------------------------------------------------------
-// 1. FIREBASE INITIALIZATION (Matches your reviews.js logic)
+// 1. FIREBASE INITIALIZATION
 // -------------------------------------------------------------------
 if (!admin.apps.length) {
   try {
@@ -17,7 +17,6 @@ if (!admin.apps.length) {
     });
   } catch (error) {
     console.error("CRM Firebase Initialization Error:", error.message);
-    // Continue execution so we can return a proper 500 JSON response below
   }
 }
 
@@ -31,7 +30,6 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // Handle preflight requests
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -39,7 +37,6 @@ module.exports = async (req, res) => {
   // 🔑 END CORS FIX
   // -------------------------------------------------------------------
 
-  // Ensure this is a POST request
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
@@ -62,27 +59,26 @@ module.exports = async (req, res) => {
     const googleResponse = await fetch(verifyUrl, { method: 'POST' });
     const googleData = await googleResponse.json();
 
-    // If Google says the token is invalid
     if (!googleData.success) {
       console.warn("Bot attempt blocked:", googleData);
       return res.status(400).json({ message: 'Captcha verification failed. Please try again.' });
     }
 
-    //-----------------------------------------------------------------
+    // -----------------------------------------------------------------
     // STEP 2: Save to Firestore
-    //-----------------------------------------------------------------
+    // -----------------------------------------------------------------
     const docRef = await db.collection('supportTickets').add({
       ...ticketData,
       status: 'open',
-      createdAt: new Date(), // Server-side timestamp
+      createdAt: new Date(),
       updatedAt: new Date(),
-      captchaVerified: true, // Trusted because server verified it
+      captchaVerified: true,
       source: 'web-portal'
     });
 
-    //----------------------------------------------------------------
+    // -----------------------------------------------------------------
     // STEP 3: Return Success
-    //----------------------------------------------------------------
+    // -----------------------------------------------------------------
     return res.status(200).json({
       message: 'Ticket created successfully',
       id: docRef.id

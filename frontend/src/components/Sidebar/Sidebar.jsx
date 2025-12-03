@@ -101,7 +101,6 @@ const Sidebar = ({ navigation, userRole, notificationCount }) => {
                 w-full text-center xl:text-left
               `}>
                 {nav.name}
-                {/* REMOVED: The old badge code that was creating the red bar */}
               </span>
             </Link>
           );
@@ -111,4 +110,4 @@ const Sidebar = ({ navigation, userRole, notificationCount }) => {
   );
 };
 
-export default Sidebar; 
+export default Sidebar;
