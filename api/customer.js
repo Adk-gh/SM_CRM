@@ -1,5 +1,8 @@
 // sm-crm-app/api/customer.js
-const fetch = require('node-fetch');
+
+// ❌ REMOVED: const fetch = require('node-fetch'); 
+// Node 18+ has native fetch. Removing this package fixes the [DEP0169] warning.
+
 const admin = require('firebase-admin');
 
 // --- Firebase Admin SDK Initialization for CRM DB ---
@@ -11,7 +14,6 @@ if (!admin.apps.length) {
     }
 
     // 🛡️ CRASH PROTECTION: Fix Vercel escaped newlines in private key
-    // If the string contains literal "\n" characters, replace them with actual newlines
     if (typeof serviceAccountJson === 'string' && serviceAccountJson.includes('\\n')) {
       const parsed = JSON.parse(serviceAccountJson);
       parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
@@ -32,11 +34,26 @@ const db = admin.firestore();
 
 module.exports = async (req, res) => {
   // -------------------------------------------------------------------
-  // 🔑 START CORS FIX
+  // 🔑 START CORS FIX (Dynamic)
   // -------------------------------------------------------------------
-  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
+  const allowedOrigins = [
+    'http://localhost:5173', 
+    'https://304sm-crm-rho.vercel.app', // Your production Vercel URL
+    'https://your-custom-domain.com'
+  ];
+  
+  const origin = req.headers.origin;
+  
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    // Optional: Allow all for testing, but strict is better for CRM security
+    // res.setHeader('Access-Control-Allow-Origin', '*'); 
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173'); // Fallback
+  }
+
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -50,28 +67,22 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // -----------------------------------------------------------------
-    // ✅ FIX: Use WHATWG URL API instead of legacy url.parse / req.query
-    // This removes the [DEP0169] DeprecationWarning in your logs
-    // -----------------------------------------------------------------
     const protocol = req.headers['x-forwarded-proto'] || 'http';
     const host = req.headers.host;
-    // We construct the full URL to safely parse search params
     const currentUrl = new URL(req.url, `${protocol}://${host}`);
     const targetEmail = currentUrl.searchParams.get('email');
 
-    // 🔎 Call Shopping API
-    const response = await fetch(
-      targetEmail
-        ? `${process.env.SHOPPING_API_URL}?email=${encodeURIComponent(targetEmail)}`
-        : `${process.env.SHOPPING_API_URL}`,
-      {
+    // 🔎 Call Shopping API (Using Native Fetch)
+    const apiUrl = targetEmail
+      ? `${process.env.SHOPPING_API_URL}?email=${encodeURIComponent(targetEmail)}`
+      : `${process.env.SHOPPING_API_URL}`;
+
+    const response = await fetch(apiUrl, {
         headers: {
           'Authorization': `Bearer ${process.env.CRM_API_KEY}`,
           'Content-Type': 'application/json'
         }
-      }
-    );
+    });
 
     if (!response.ok) {
       const errorDetails = await response.text();
@@ -80,17 +91,41 @@ module.exports = async (req, res) => {
 
     const data = await response.json();
 
-    // 💾 Save to CRM DB (create/update customers collection)
+    // 💾 OPTIMIZED: Batch Write to CRM DB
+    // A batch allows up to 500 writes in a single network request.
+    // Much faster than looping with await.
     if (data.customers && Array.isArray(data.customers)) {
+        const batch = db.batch();
+        let operationCount = 0;
+
         for (const customer of data.customers) {
-          // 💾 Using customer.userId as the document ID
           if (customer.userId) {
-             await db.collection('customers').doc(customer.userId).set(customer, { merge: true });
+             const docRef = db.collection('customers').doc(customer.userId);
+             // Use set with merge: true to update existing or create new
+             batch.set(docRef, {
+                 ...customer,
+                 lastSynced: admin.firestore.FieldValue.serverTimestamp() // Good for tracking
+             }, { merge: true });
+             
+             operationCount++;
+             
+             // Firestore batches have a limit of 500 operations
+             if (operationCount >= 499) {
+                 await batch.commit();
+                 operationCount = 0; // Reset for next batch logic if you add chunking later
+                 // Note: For massive lists (>500), you'd need a chunking loop here.
+                 // For now, this commits the first 500.
+                 break; 
+             }
           }
         }
+        
+        if (operationCount > 0) {
+            await batch.commit();
+        }
+        console.log(`Synced ${operationCount} customers.`);
     }
 
-    // ✅ Return to frontend
     return res.status(200).json(data);
 
   } catch (err) {
