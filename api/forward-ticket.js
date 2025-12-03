@@ -1,15 +1,13 @@
-const fetch = require('node-fetch');
-require('dotenv').config();
+// sm-crm-app/api/route-ticket.js
 
-// Environment Variables
-const POS_FUNCTION_URL = "https://spobwqqaskuhcmyeklgk.supabase.co/functions/v1/ticket"; // Supabase Edge Function URL
-const INV_API_URL = process.env.INV_API_URL;           
-const INVENTORY_API_KEY = process.env.INVENTORY_API_KEY;
-const ONLINESHOPPING_API_URL = process.env.ONLINESHOPPING_API_URL;
-const ONLINESHOPPING_API_KEY = process.env.ONLINESHOPPING_API_KEY;
+// ❌ REMOVED: const fetch = require('node-fetch'); (Native fetch is used)
+// ❌ REMOVED: require('dotenv').config(); (Vercel injects these automatically)
+
+// Configuration Constants
+const POS_FUNCTION_URL = "https://spobwqqaskuhcmyeklgk.supabase.co/functions/v1/ticket";
 
 /**
- * Helper function to securely call an external REST API.
+ * Helper function to securely call an external REST API using Native Fetch.
  */
 const forwardRequest = async (url, payload, apiKey, useXApiKey = false) => {
   if (!url) throw new Error('Missing URL configuration for the target system.');
@@ -18,9 +16,9 @@ const forwardRequest = async (url, payload, apiKey, useXApiKey = false) => {
 
   if (apiKey) {
     if (useXApiKey) {
-      headers['X-API-Key'] = apiKey; // Inventory
+      headers['X-API-Key'] = apiKey; // Inventory System pattern
     } else {
-      headers['Authorization'] = `Bearer ${apiKey}`; // Online Shopping
+      headers['Authorization'] = `Bearer ${apiKey}`; // Online Shopping pattern
     }
   }
 
@@ -31,7 +29,8 @@ const forwardRequest = async (url, payload, apiKey, useXApiKey = false) => {
   });
 
   if (!response.ok) {
-    const errorDetails = await response.text();
+    // Try to get text, if that fails, default to status text
+    const errorDetails = await response.text().catch(() => response.statusText);
     throw new Error(`External API failed (${response.status} from ${url}): ${errorDetails}`);
   }
 
@@ -40,8 +39,48 @@ const forwardRequest = async (url, payload, apiKey, useXApiKey = false) => {
 
 // Main Serverless Handler
 module.exports = async (req, res) => {
+  // -------------------------------------------------------------------
+  // 🔑 START CORS FIX
+  // -------------------------------------------------------------------
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'https://304sm-crm-rho.vercel.app', 
+    // 'https://your-custom-domain.com'
+  ];
+
+  const origin = req.headers.origin;
+
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
+  }
+
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  // -------------------------------------------------------------------
+  // 🔑 END CORS FIX
+  // -------------------------------------------------------------------
+
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
+  }
+
+  // 🛡️ CRASH PROTECTION: Validate Environment Variables before processing
+  const { 
+    INV_API_URL, 
+    INVENTORY_API_KEY, 
+    ONLINESHOPPING_API_URL, 
+    ONLINESHOPPING_API_KEY 
+  } = process.env;
+
+  if (!INV_API_URL || !INVENTORY_API_KEY || !ONLINESHOPPING_API_URL || !ONLINESHOPPING_API_KEY) {
+    console.error("CRITICAL: Missing Environment Variables in Vercel.");
+    return res.status(500).json({ message: "Server configuration error: Missing API Keys." });
   }
 
   const { ticketId, issueTitle, issueDescription, userEmail, issueCategory } = req.body;
@@ -55,7 +94,9 @@ module.exports = async (req, res) => {
   try {
     switch (issueCategory.toLowerCase()) {
       case 'billing':
-        // ✅ Forward to POS Supabase Edge Function with exact DB schema
+        // ✅ Forward to POS Supabase Edge Function
+        // Note: This API seems to not require a Bearer token in your original code, 
+        // but if it does, add it to headers below.
         const posPayload = {
           ticketid: ticketId,
           subject: issueTitle ?? null,
@@ -110,11 +151,12 @@ module.exports = async (req, res) => {
           task: 'VERIFY_STOCK'
         };
 
+        // Note: Your original code appended ticketId to the URL for Inventory
         results.inventory = await forwardRequest(
           `${INV_API_URL}/${ticketId}`,
           invPayload,
           INVENTORY_API_KEY,
-          true
+          true // Use X-API-Key header
         );
         break;
 
