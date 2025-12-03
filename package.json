@@ -7,13 +7,17 @@
     "node": "22.x"
   },
   "dependencies": {
+    "chart.js": "^4.4.2",
+    "clsx": "^2.1.1",
     "dotenv": "^16.4.5",
     "firebase": "^10.12.0",
     "firebase-admin": "^12.0.0",
     "lucide-react": "^0.378.0",
     "react": "^18.3.1",
+    "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.23.0"
+    "react-router-dom": "^6.23.0",
+    "tailwind-merge": "^2.3.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
