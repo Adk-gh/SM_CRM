@@ -7,8 +7,10 @@
     "node": "22.x"
   },
   "dependencies": {
+    "@emailjs/browser": "^4.3.3",
     "chart.js": "^4.4.2",
     "clsx": "^2.1.1",
+    "date-fns": "^3.6.0",
     "dotenv": "^16.4.5",
     "firebase": "^10.12.0",
     "firebase-admin": "^12.0.0",
