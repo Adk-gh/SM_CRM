@@ -1,8 +1,5 @@
 // sm-crm-app/api/reviews.js
 
-// ❌ REMOVED: const fetch = require('node-fetch');
-// Native Node.js fetch is used below.
-
 const admin = require('firebase-admin');
 
 // -------------------------------------------------------------------
@@ -36,25 +33,28 @@ const db = admin.firestore();
 
 module.exports = async (req, res) => {
   // -------------------------------------------------------------------
-  // 🔑 START CORS FIX (Dynamic)
+  // 🔑 START CORS FIX (UPDATED)
   // -------------------------------------------------------------------
   const allowedOrigins = [
-    'http://localhost:5173', 
-    'https://304sm-crm-rho.vercel.app', // Your production domain
-    // 'https://your-custom-domain.com' 
+    'http://localhost:5173',                  // Local Development
+    'https://sm-crm-rho.vercel.app',          // Your Vercel Backend Production
+    'https://crm-db-6f861.web.app',           // 🟢 YOUR FIREBASE FRONTEND (Added)
+    'https://crm-db-6f861.firebaseapp.com'    // 🟢 Firebase Alternate (Added)
   ];
   
   const origin = req.headers.origin;
   
+  // Logic: If the origin is in our allowed list, send it back in the header.
+  // If it's NOT in the list, we don't send the header at all (or send null), 
+  // which effectively blocks it without causing the "mismatch" error confusion.
   if (allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
-  }
+  } 
   
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
+  // Handle preflight requests immediately
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -74,7 +74,6 @@ module.exports = async (req, res) => {
     const targetEmail = currentUrl.searchParams.get('email');
 
     // 🔎 Call Shopping API (Using Native Fetch)
-    // Note: I kept your variable 'SHOPPING_API_URLS'. Ensure this matches your .env file.
     const baseUrl = process.env.SHOPPING_API_URLS; 
     const apiUrl = targetEmail
       ? `${baseUrl}?email=${encodeURIComponent(targetEmail)}`
@@ -114,8 +113,8 @@ module.exports = async (req, res) => {
         // Commit batch if we hit the limit (500)
         if (operationCount >= 499) {
             await batch.commit();
-            operationCount = 0; // Reset for next chunk logic if needed
-            break; // For now, we stop at 500 to allow the function to return
+            operationCount = 0; 
+            break; 
         }
       }
 

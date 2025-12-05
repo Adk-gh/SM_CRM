@@ -340,6 +340,7 @@ const styles = `
     .analytics-grid { grid-template-columns: 1fr; }
     .contact-grid { grid-template-columns: 1fr; }
     .status-summary-box { grid-template-columns: 1fr; }
+    .content-card { min-height: auto; } /* Let it flow on mobile */
   }
 `;
 
@@ -739,25 +740,35 @@ const SupportTickets = () => {
     setIsForwarding(true);
     try {
       const ticketRef = doc(db, 'supportTickets', selectedTicket.id);
+      
+      // 1. Validate Email
+      if (!selectedTicket.userEmail) {
+          throw new Error('Cannot forward: Ticket has no valid email address.');
+      }
+
       const templateParams = {
-        userEmail: selectedTicket.userEmail,
+        to_email: selectedTicket.userEmail,   // Send to user
+        user_email: selectedTicket.userEmail, // Fallback
         userName: selectedTicket.requester,
         issueTitle: selectedTicket.subject,
         department: targetDept
       };
+      
       await emailjs.send(EMAIL_FORWARD_SERVICE_ID, EMAIL_FORWARD_TEMPLATE_ID, templateParams, EMAIL_FORWARD_PUBLIC_KEY);
+      
       await updateDoc(ticketRef, {
         status: 'pending',
         department: targetDept,
         priority: targetPriority,
         forwardedAt: serverTimestamp(),
       });
+      
       setTickets(prev => prev.map(t => t.id === selectedTicket.id ? { ...t, status: 'pending', department: targetDept, priority: targetPriority, forwardedAt: new Date() } : t));
       showAlert(`Forwarded to ${targetDept}`, 'success');
       setForwardModalOpen(false);
     } catch (error) {
-      console.error(error);
-      showAlert('Failed to forward', 'danger');
+      console.error("Forward Error:", error);
+      showAlert(error.message || 'Failed to forward ticket', 'danger');
     } finally {
       setIsForwarding(false);
     }
@@ -767,7 +778,6 @@ const SupportTickets = () => {
   const confirmReject = async () => {
     if (!rejectionReason) return showAlert('Please provide a rejection reason', 'warning');
     
-    // Safety check: Ensure email exists
     if (!selectedTicket.userEmail) {
         return showAlert('Error: User email is missing from this ticket.', 'danger');
     }
@@ -777,39 +787,29 @@ const SupportTickets = () => {
     try {
       const ticketRef = doc(db, 'supportTickets', selectedTicket.id);
       
-      // ✅ Using 'to_email' parameter required by EmailJS
       const templateParams = {
-        to_email: selectedTicket.userEmail, 
+        to_email: selectedTicket.userEmail,
+        user_email: selectedTicket.userEmail, // Fallback
         to_name: selectedTicket.requester,  
         subject: selectedTicket.subject,    
         rejection_reason: rejectionReason   
       };
       
-      console.log("Sending Reject Email with params:", templateParams); 
-
-      // Sending email to customer about rejection
       await emailjs.send(EMAIL_REJECT_SERVICE_ID, EMAIL_REJECT_TEMPLATE_ID, templateParams, EMAIL_REJECT_PUBLIC_KEY);
       
-      // Updating Firestore
       await updateDoc(ticketRef, {
         status: 'rejected',
         rejectionReason: rejectionReason,
         rejectedAt: serverTimestamp(),
       });
       
-      // Update local state to remove it from "New" list
       setTickets(prev => prev.map(t => t.id === selectedTicket.id ? { ...t, status: 'rejected', rejectionReason: rejectionReason, rejectedAt: new Date() } : t));
       
       showAlert(`Ticket Rejected`, 'success');
       setRejectModalOpen(false);
     } catch (error) {
       console.error("Reject Error:", error);
-      
-      if (error.text) {
-          showAlert(`Email Error: ${error.text}`, 'danger');
-      } else {
-          showAlert('Failed to reject ticket', 'danger');
-      }
+      showAlert('Failed to reject ticket', 'danger');
     } finally {
       setIsRejecting(false);
     }
@@ -817,6 +817,11 @@ const SupportTickets = () => {
 
   const handleResolve = async () => {
     if (!replyText) return showAlert('Enter a note', 'warning');
+    
+    if (!selectedTicket.userEmail) {
+        return showAlert('Error: User email is missing. Cannot notify.', 'danger');
+    }
+
     setIsUploadingResolution(true);
 
     try {
@@ -826,7 +831,8 @@ const SupportTickets = () => {
       }
 
       const templateParams = {
-        userEmail: selectedTicket.userEmail,
+        to_email: selectedTicket.userEmail,
+        user_email: selectedTicket.userEmail, // Fallback
         userName: selectedTicket.requester,
         issueTitle: selectedTicket.subject,
         department: selectedTicket.department,

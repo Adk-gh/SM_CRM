@@ -1,8 +1,5 @@
 // sm-crm-app/api/customer.js
 
-// ❌ REMOVED: const fetch = require('node-fetch'); 
-// Node 18+ has native fetch. Removing this package fixes the [DEP0169] warning.
-
 const admin = require('firebase-admin');
 
 // --- Firebase Admin SDK Initialization for CRM DB ---
@@ -34,27 +31,27 @@ const db = admin.firestore();
 
 module.exports = async (req, res) => {
   // -------------------------------------------------------------------
-  // 🔑 START CORS FIX (Dynamic)
+  // 🔑 START CORS FIX (UPDATED)
   // -------------------------------------------------------------------
   const allowedOrigins = [
-    'http://localhost:5173', 
-    'https://304sm-crm-rho.vercel.app', // Your production Vercel URL
-    'https://your-custom-domain.com'
+    'http://localhost:5173',                  // Local Development
+    'https://sm-crm-rho.vercel.app',          // Your Vercel Backend Production
+    'https://crm-db-6f861.web.app',           // 🟢 YOUR FIREBASE FRONTEND (Added)
+    'https://crm-db-6f861.firebaseapp.com'    // 🟢 Firebase Alternate (Added)
   ];
   
   const origin = req.headers.origin;
   
+  // Logic: Only set the header if the origin is explicitly allowed.
+  // We removed the 'else' block that forced 'localhost', which caused the CORS error.
   if (allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    // Optional: Allow all for testing, but strict is better for CRM security
-    // res.setHeader('Access-Control-Allow-Origin', '*'); 
-    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173'); // Fallback
-  }
+  } 
 
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
+  // Handle preflight requests immediately
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -92,8 +89,6 @@ module.exports = async (req, res) => {
     const data = await response.json();
 
     // 💾 OPTIMIZED: Batch Write to CRM DB
-    // A batch allows up to 500 writes in a single network request.
-    // Much faster than looping with await.
     if (data.customers && Array.isArray(data.customers)) {
         const batch = db.batch();
         let operationCount = 0;
@@ -112,9 +107,7 @@ module.exports = async (req, res) => {
              // Firestore batches have a limit of 500 operations
              if (operationCount >= 499) {
                  await batch.commit();
-                 operationCount = 0; // Reset for next batch logic if you add chunking later
-                 // Note: For massive lists (>500), you'd need a chunking loop here.
-                 // For now, this commits the first 500.
+                 operationCount = 0; 
                  break; 
              }
           }
