@@ -26,9 +26,9 @@ const ROLE_TO_DEPT_MAP = {
 };
 
 // --- EMAIL CONFIGURATION ---
-const EMAIL_FORWARD_SERVICE_ID = "service_vg58qh8";
-const EMAIL_FORWARD_TEMPLATE_ID = "template_9lluwnr";
-const EMAIL_FORWARD_PUBLIC_KEY = "6XU-uQ7Og0d4oAykV";
+const EMAIL_FORWARD_SERVICE_ID = "service_olb5jz9";
+const EMAIL_FORWARD_TEMPLATE_ID = "template_5kna9fs";
+const EMAIL_FORWARD_PUBLIC_KEY = "gtZLgUOmCB4u9Rw66";
 
 const EMAIL_RESOLVE_SERVICE_ID = "service_e6osrqk";
 const EMAIL_RESOLVE_TEMPLATE_ID = "template_9f0b21p";
@@ -111,16 +111,15 @@ const styles = `
     scrollbar-color: var(--border-light) transparent;
   }
   
-  /* MAIN WRAPPER */
+  /* MAIN LAYOUT WRAPPER */
   .support-tickets-wrapper { 
       background: var(--bg-primary); 
       color: var(--text-primary);
       display: flex;
       flex-direction: column;
       width: 100%;
-      height: 100vh; /* Full Viewport Height */
+      height: 100vh; 
       padding: 15px; 
-      /* Allow main page to scroll if content is too tall */
       overflow-y: auto; 
       transition: background-color 0.3s ease, color 0.3s ease;
   }
@@ -151,7 +150,7 @@ const styles = `
   .tab-btn.active::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 100%; height: 3px; background: var(--accent-primary); }
   .tab-count { font-size: 12px; background: var(--bg-secondary); padding: 2px 8px; border-radius: 10px; margin-left: 8px; color: var(--text-primary); }
   
-  /* CONTENT CARD (Where Table Lives) */
+  /* CONTENT CARD */
   .content-card { 
       background: var(--card-bg); 
       border-radius: 16px; 
@@ -160,10 +159,7 @@ const styles = `
       border: 1px solid var(--border-light);
       display: flex;
       flex-direction: column;
-      
-      /* FIX: Force height so table doesn't collapse */
       min-height: 600px; 
-      /* Allow it to grow if needed */
       flex: 1; 
       margin-bottom: 20px;
   }
@@ -178,15 +174,13 @@ const styles = `
   .table-scroll-container {
       margin-top: 15px;
       width: 100%;
-      flex: 1; /* Fill the content card */
+      flex: 1; 
       overflow-x: auto;
       overflow-y: auto;
       padding-right: 5px; 
-      /* Double insurance for height */
       min-height: 400px; 
   }
 
-  /* Custom Scrollbar */
   .table-scroll-container::-webkit-scrollbar { width: 6px; height: 6px; }
   .table-scroll-container::-webkit-scrollbar-track { background: transparent; }
   .table-scroll-container::-webkit-scrollbar-thumb { background-color: var(--border-light); border-radius: 10px; }
@@ -346,7 +340,6 @@ const styles = `
     .analytics-grid { grid-template-columns: 1fr; }
     .contact-grid { grid-template-columns: 1fr; }
     .status-summary-box { grid-template-columns: 1fr; }
-    .content-card { min-height: auto; } /* Let it flow on mobile */
   }
 `;
 
@@ -656,14 +649,18 @@ const SupportTickets = () => {
       result = result.filter(t => t.priority === priorityFilter);
     }
 
-    // 6. Search Query
+    // 6. Global Search Query (Updated to search multiple fields)
     if (searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase();
       result = result.filter(t =>
         t.subject.toLowerCase().includes(query) ||
         t.requester.toLowerCase().includes(query) ||
         t.id.toLowerCase().includes(query) ||
-        t.branchLabel.toLowerCase().includes(query)
+        t.branchLabel.toLowerCase().includes(query) ||
+        (t.categoryLabel && t.categoryLabel.toLowerCase().includes(query)) ||
+        (t.priority && t.priority.toLowerCase().includes(query)) ||
+        (t.department && t.department.toLowerCase().includes(query)) ||
+        (t.status && t.status.toLowerCase().includes(query))
       );
     }
 

@@ -355,7 +355,7 @@ const InternalChart = ({ type, data, isDark }) => {
 
 // --- MAIN DASHBOARD COMPONENT ---
 const Dashboard = () => {
-  const [activeSection, setActiveSection] = useState('overview');
+  const [activeSection] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [isDark, setIsDark] = useState(false);
 

@@ -27,20 +27,41 @@ const SupportTicketSubmit = () => {
   const fileInputRef = useRef(null);
   const captchaRef = useRef(null);
 
-  // --- THEME STATE ---
-  const [theme, setTheme] = useState(localStorage.getItem('sm-theme') || 'light');
+  // --- THEME STATE LOGIC (Production Safe) ---
+  const [theme, setTheme] = useState('light'); // Default to light initially to prevent hydration mismatch
 
+  // 1. Initialize Theme on Mount
   useEffect(() => {
-    document.body.setAttribute('data-theme', theme);
-    localStorage.setItem('sm-theme', theme);
-  }, [theme]);
+    // Check Local Storage
+    const storedTheme = localStorage.getItem('sm-theme');
+    
+    // Check System Preference
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
+    if (storedTheme === 'dark' || (!storedTheme && systemPrefersDark)) {
+      setTheme('dark');
+      document.documentElement.classList.add('dark');
+    } else {
+      setTheme('light');
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  // 2. Handle Toggles
   const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    localStorage.setItem('sm-theme', newTheme);
+
+    const root = document.documentElement;
+    if (newTheme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
   };
 
   // --- FORM STATE ---
-  // These names match the Input "name" attributes below
   const [formData, setFormData] = useState({
     userName: '',
     userEmail: '',
@@ -68,8 +89,8 @@ const SupportTicketSubmit = () => {
 
     // === PHONE NUMBER LIMIT (11 Digits) ===
     if (name === 'userPhone') {
-      const numericValue = value.replace(/\D/g, ''); // Remove non-numbers
-      const truncatedValue = numericValue.slice(0, 11); // Limit to 11
+      const numericValue = value.replace(/\D/g, ''); 
+      const truncatedValue = numericValue.slice(0, 11); 
       setFormData(prev => ({ ...prev, [name]: truncatedValue }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
@@ -175,40 +196,24 @@ const SupportTicketSubmit = () => {
       }
 
       // === PAYLOAD CONSTRUCTION ===
-      // This object strictly matches the keys required by your Admin Dashboard
       const ticketPayload = {
-        // 1. Identity
         userName: formData.userName,       
         userEmail: formData.userEmail,     
         userPhone: formData.userPhone,     
-
-        // 2. Location
         smBranch: formData.smBranch,       
         branchLabel: SM_BRANCHES.find(b => b.value === formData.smBranch)?.label || 'SM City San Pablo',
-
-        // 3. Issue Details
         issueTitle: formData.issueTitle,            
         issueDescription: formData.issueDescription,
-        
-        // 4. Categorization
         issueCategory: formData.issueCategory, 
         categoryLabel: ISSUE_CATEGORIES.find(cat => cat.value === formData.issueCategory)?.label || 'N/A',
-
-        // 5. Status & Workflow
         status: 'open',
         priority: 'Unassigned',
         agentReply: '',            
         rejectionReason: '',       
-        
-        // 6. Metadata
         createdAt: new Date().toISOString(),
         attachments: uploadedAttachments,
-        
-        // 7. Security
         captchaToken: captchaToken
       };
-
-      console.log("Submitting Payload:", ticketPayload); // Check Console F12 if errors persist
 
       const response = await fetch('https://sm-crm-rho.vercel.app/api/submitTicket', {
         method: 'POST',
@@ -298,12 +303,16 @@ const SupportTicketSubmit = () => {
   const sectionTitleClasses = "text-[1.4rem] font-bold text-[#395A7F] dark:text-[#E9ECEE] mb-6 flex items-center gap-3 pb-3 border-b-2 border-[#A3CAE9] dark:border-[#4299E1]";
 
   return (
-    <div className={theme === 'dark' ? 'dark' : ''}>
+    <div>
       <div className="min-h-screen flex flex-col items-center justify-center p-5 font-sans bg-gradient-to-br from-[#F4F4F4] to-[#A3CAE9] dark:from-[#1E2A38] dark:to-[#2C3E50] text-[#395A7F] dark:text-[#E9ECEE] transition-colors duration-300">
         
         {/* Theme Toggle */}
         <div className="absolute top-5 right-5 z-40">
-          <button onClick={toggleTheme} className="p-3 rounded-full bg-white dark:bg-[#2C3E50] shadow-md hover:shadow-lg transition-all text-[#395A7F] dark:text-[#E9ECEE] border border-[#D1D5DB] dark:border-[#4A5568]">
+          <button 
+            onClick={toggleTheme} 
+            className="p-3 rounded-full bg-white dark:bg-[#2C3E50] shadow-md hover:shadow-lg transition-all text-[#395A7F] dark:text-[#E9ECEE] border border-[#D1D5DB] dark:border-[#4A5568]"
+            aria-label="Toggle Dark Mode"
+          >
             {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
           </button>
         </div>

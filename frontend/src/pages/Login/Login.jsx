@@ -301,7 +301,7 @@ const Login = () => {
       const templateParams = { to_email: user.email, to_name: user.displayName || "User", code: code };
       
       // Replace with your actual service ID and Template ID
-      await emailjs.send("service_vg58qh8", "template_av0qj19", templateParams, "6XU-uQ7Og0d4oAykV");
+  await emailjs.send("service_olb5jz9", "template_ci8b9vh", templateParams, "gtZLgUOmCB4u9Rw66");
 
       await setDoc(doc(db, 'users', user.uid), { is2FAPending: true }, { merge: true });
       setExpected2FACode(code);
@@ -440,7 +440,7 @@ const Login = () => {
               {branches.map(b => <option key={b} value={b}>{b}</option>)}
             </select>
             <input type="email" name="email" value={profileData.email} disabled />
-           <input type="tel" name="phone" value={profileData.phone} onChange={handleProfileInputChange} placeholder="Phone Number" maxLength={11} required />
+            <input type="tel" name="phone" value={profileData.phone} onChange={handleProfileInputChange} placeholder="Phone Number" required />
           </div>
         );
       case 3:
