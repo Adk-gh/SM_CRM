@@ -96,44 +96,69 @@ module.exports = async (req, res) => {
     }
 
     // -----------------------------------------------------------------
-    // STEP 2: Save to Firestore (FIXED VARIABLE NAMES)
+    // STEP 2: Save to Firestore (FIXED FIELD MAPPING)
     // -----------------------------------------------------------------
     
-    // We extract the names sent by the frontend (userName, issueCategory, etc)
+    // Destructure specifically to ensure we catch all fields sent by Frontend
     const { 
       userName, 
       userEmail, 
       userPhone,
       smBranch,
+      branchLabel,      // NEW: Required by Admin
       issueCategory, 
+      categoryLabel,    // NEW: Required by Admin
       issueTitle, 
       issueDescription,
       attachments = [],
-      priority = 'normal'
+      priority = 'Unassigned',
+      status = 'open',
+      agentReply = '',
+      rejectionReason = ''
     } = rawBody;
 
-    // Validation: Check if the *Frontend* fields exist
-    if (!userName || !userEmail || !issueDescription || !issueCategory) {
+    // Validation
+    if (!userName || !userEmail || !issueDescription || !issueTitle) {
        console.error("Missing fields. Received:", rawBody);
        return res.status(400).json({ message: 'Missing required fields.' });
     }
 
-    // Map them to your Database Schema
+    //  - Conceptual visualization
+    // We map these DIRECTLY to the keys the Admin Dashboard uses.
     const docRef = await db.collection('supportTickets').add({
-      fullName: userName,        // Map userName -> fullName
-      email: userEmail,          // Map userEmail -> email
-      phone: userPhone || '',
-      branch: smBranch,
-      department: issueCategory, // Map issueCategory -> department
-      subject: issueTitle,       // Map issueTitle -> subject
-      description: issueDescription, // Map issueDescription -> description
+      // --- Identity ---
+      userName: userName,           // CORRECT: Admin looks for data.userName
+      userEmail: userEmail,         // CORRECT: Admin looks for data.userEmail
+      userPhone: userPhone || '',   // CORRECT: Admin looks for data.userPhone
+
+      // --- Location ---
+      smBranch: smBranch,           // CORRECT: Admin looks for data.smBranch
+      branchLabel: branchLabel,     // CORRECT: Admin looks for data.branchLabel
+
+      // --- Categorization ---
+      issueCategory: issueCategory, // CORRECT: Admin uses this for map
+      categoryLabel: categoryLabel, // CORRECT: Admin looks for data.categoryLabel
+      department: null,             // CORRECT: We let Admin calculate this based on category
+
+      // --- Issue ---
+      issueTitle: issueTitle,             // CORRECT: Admin looks for data.issueTitle
+      issueDescription: issueDescription, // CORRECT: Admin looks for data.issueDescription
+      
+      // --- Workflow ---
+      status: status,
+      priority: priority,
       attachments: attachments,
-      priority,
-      status: 'open',
+      agentReply: agentReply,
+      rejectionReason: rejectionReason,
+      resolutionImageURL: null,
+
+      // --- Meta ---
+      source: 'web-portal',
+      captchaVerified: true,
+      
+      // We use serverTimestamp to ensure consistent sorting in the dashboard
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      captchaVerified: true,
-      source: 'web-portal'
     });
 
     // -----------------------------------------------------------------

@@ -68,7 +68,7 @@ const ISSUE_CATEGORIES = [
 ];
 
 // =======================================
-// STYLES (UPDATED FOR DARK MODE)
+// STYLES
 // =======================================
 const styles = `
   :root { 
@@ -105,18 +105,30 @@ const styles = `
     --info-color: #63B3ED;
   }
 
-  * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+  * { 
+    margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; 
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-light) transparent;
+  }
   
-  /* FIX: Main Wrapper Layout */
+  /* MAIN WRAPPER */
   .support-tickets-wrapper { 
       background: var(--bg-primary); 
-      height: 100%; /* Fill parent container */
-      padding: 30px; 
       color: var(--text-primary);
       display: flex;
       flex-direction: column;
-      overflow: hidden; /* Prevent Global Scroll */
+      width: 100%;
+      height: 100vh; /* Full Viewport Height */
+      padding: 15px; 
+      /* Allow main page to scroll if content is too tall */
+      overflow-y: auto; 
       transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  
+  @media (min-width: 1024px) {
+    .support-tickets-wrapper {
+        padding: 30px;
+    }
   }
 
   /* UTILS */
@@ -130,6 +142,8 @@ const styles = `
       display: flex; gap: 20px; margin-bottom: 20px; 
       border-bottom: 2px solid var(--border-light); padding-bottom: 0; 
       flex-shrink: 0; 
+      overflow-x: auto;
+      white-space: nowrap;
   }
   .tab-btn { background: none; border: none; font-size: 16px; font-weight: 600; color: var(--text-muted); cursor: pointer; padding: 10px 20px; position: relative; }
   .tab-btn:hover { color: var(--text-primary); }
@@ -137,39 +151,49 @@ const styles = `
   .tab-btn.active::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 100%; height: 3px; background: var(--accent-primary); }
   .tab-count { font-size: 12px; background: var(--bg-secondary); padding: 2px 8px; border-radius: 10px; margin-left: 8px; color: var(--text-primary); }
   
-  /* FIX: Content Card Layout for Table Scroll */
+  /* CONTENT CARD (Where Table Lives) */
   .content-card { 
       background: var(--card-bg); 
       border-radius: 16px; 
-      padding: 20px 30px; 
+      padding: 20px; 
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); 
       border: 1px solid var(--border-light);
-      
-      /* Flex properties to fill remaining space */
-      flex: 1;
       display: flex;
       flex-direction: column;
-      overflow: hidden; /* Container doesn't scroll, child does */
-      min-height: 0; 
+      
+      /* FIX: Force height so table doesn't collapse */
+      min-height: 600px; 
+      /* Allow it to grow if needed */
+      flex: 1; 
+      margin-bottom: 20px;
   }
 
-  /* FIX: Scrollable Table Container */
+  @media (min-width: 1024px) {
+    .content-card {
+        padding: 20px 30px;
+    }
+  }
+
+  /* TABLE CONTAINER */
   .table-scroll-container {
-      flex: 1;
-      overflow-y: auto; 
-      overflow-x: auto;
       margin-top: 15px;
+      width: 100%;
+      flex: 1; /* Fill the content card */
+      overflow-x: auto;
+      overflow-y: auto;
       padding-right: 5px; 
+      /* Double insurance for height */
+      min-height: 400px; 
   }
 
-  /* Custom Scrollbar for Table */
+  /* Custom Scrollbar */
   .table-scroll-container::-webkit-scrollbar { width: 6px; height: 6px; }
   .table-scroll-container::-webkit-scrollbar-track { background: transparent; }
   .table-scroll-container::-webkit-scrollbar-thumb { background-color: var(--border-light); border-radius: 10px; }
   .table-scroll-container::-webkit-scrollbar-thumb:hover { background-color: var(--text-muted); }
 
   /* TABLE STYLING */
-  .ticket-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+  .ticket-table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 800px; }
   .ticket-table th { 
       position: sticky; top: 0; z-index: 10; 
       text-align: left; 
@@ -222,7 +246,16 @@ const styles = `
   .action-btn:hover { opacity: 0.9; transform: translateY(-1px); }
   .action-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
-  /* FILTER DROPDOWN STYLES */
+  /* FILTERS & TOOLBAR */
+  .toolbar { 
+      display: flex; 
+      flex-wrap: wrap; 
+      justify-content: flex-end; 
+      align-items: center; 
+      gap: 10px; 
+      margin-bottom: 15px; 
+      flex-shrink: 0; 
+  }
   .filter-wrapper { position: relative; }
   .filter-menu-container { 
       position: absolute; top: 40px; right: 0; width: 280px; 
@@ -238,10 +271,10 @@ const styles = `
 
   /* MODALS */
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); }
-  .modal-content { background: var(--card-bg); color: var(--text-primary); padding: 40px; border-radius: 12px; width: 800px; max-width: 95%; max-height: 100vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border: 1px solid var(--border-light); }
+  .modal-content { background: var(--card-bg); color: var(--text-primary); padding: 30px; border-radius: 12px; width: 800px; max-width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border: 1px solid var(--border-light); }
   .form-select { width: 100%; padding: 10px; border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-secondary); color: var(--text-primary); outline: none; }
 
-  /* NEW DETAIL LAYOUT STYLES */
+  /* DETAIL LAYOUT */
   .detail-header-meta { font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
   .detail-subject { font-size: 22px; font-weight: 600; color: var(--text-primary); margin-bottom: 30px; }
   .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 40px; margin-bottom: 30px; }
@@ -251,7 +284,7 @@ const styles = `
   .status-summary-box { background: var(--bg-secondary); border-radius: 8px; padding: 20px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 30px; border: 1px solid var(--border-light); }
   .desc-box { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 8px; padding: 20px; color: var(--text-primary); font-size: 14px; line-height: 1.5; min-height: 80px; }
 
-  /* CAROUSEL STYLES */
+  /* CAROUSEL */
   .carousel-container { position: relative; border: 1px solid var(--border-light); border-radius: 8px; overflow: hidden; background: var(--card-bg); margin-bottom: 10px; height: 350px; display: flex; align-items: center; justify-content: center; }
   .carousel-slide { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; padding: 20px; position: relative; }
   .carousel-image { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px; }
@@ -265,7 +298,7 @@ const styles = `
   .carousel-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border-light); cursor: pointer; transition: all 0.2s; }
   .carousel-dot.active { background: var(--accent-primary); transform: scale(1.2); }
 
-  /* RESOLUTION UPLOAD STYLES */
+  /* RESOLUTION UPLOAD */
   .resolution-upload-container { margin-top: 15px; display: flex; align-items: center; gap: 15px; }
   .upload-btn-wrapper { position: relative; overflow: hidden; display: inline-block; }
   .upload-btn { border: 1px solid var(--border-light); color: var(--text-muted); background-color: var(--card-bg); padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s; }
@@ -275,12 +308,11 @@ const styles = `
   .preview-image { width: 100%; height: 100%; object-fit: cover; }
   .remove-preview { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.5); color: white; border-radius: 50%; padding: 2px; cursor: pointer; }
 
-  /* ANALYTICS & TOOLBAR */
+  /* ANALYTICS & GRID */
   .analytics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; flex-shrink: 0; }
   .stat-card { background: var(--card-bg); padding: 25px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid var(--border-light); height: 100%; display: flex; flex-direction: column; }
   .stat-title { font-size: 13px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
-  .toolbar { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-bottom: 15px; flex-shrink: 0; }
-  .search-input { padding: 8px 12px 8px 35px; border-radius: 8px; border: 1px solid var(--border-light); width: 250px; background: var(--card-bg); color: var(--text-primary); outline: none; }
+  .search-input { padding: 8px 12px 8px 35px; border-radius: 8px; border: 1px solid var(--border-light); width: 200px; background: var(--card-bg); color: var(--text-primary); outline: none; }
   .filter-select { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-light); background: var(--bg-secondary); color: var(--text-primary); appearance: none; width: 100%; cursor: pointer; outline: none; }
   .custom-alert { position: fixed; top: 20px; right: 20px; padding: 15px 25px; border-radius: 8px; color: white; font-weight: 500; z-index: 2000; }
 
@@ -314,6 +346,7 @@ const styles = `
     .analytics-grid { grid-template-columns: 1fr; }
     .contact-grid { grid-template-columns: 1fr; }
     .status-summary-box { grid-template-columns: 1fr; }
+    .content-card { min-height: auto; } /* Let it flow on mobile */
   }
 `;
 
@@ -840,8 +873,8 @@ const SupportTickets = () => {
     setAttachmentIndex((prev) => (prev - 1 + selectedTicket.attachments.length) % selectedTicket.attachments.length);
   };
 
-  if (authLoading) return <div style={{display:'flex',justifyContent:'center',alignItems:'center',height:'100vh'}}><Loader2 className="animate-spin" /> Loading User Profile...</div>;
-  if (!userProfile) return <div style={{padding:50, textAlign:'center'}}>Access Required</div>;
+  if (authLoading) return <div style={{display:'flex',justifyContent:'center',alignItems:'center',height:'100vh',color:'var(--text-primary)'}}><Loader2 className="animate-spin" /> Loading User Profile...</div>;
+  if (!userProfile) return <div style={{padding:50, textAlign:'center', color:'var(--text-primary)'}}>Access Required</div>;
 
   return (
     <div className="support-tickets-wrapper">

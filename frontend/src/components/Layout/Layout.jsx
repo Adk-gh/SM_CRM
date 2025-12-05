@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { signOut, updateEmail, updatePassword } from 'firebase/auth'; 
+import { 
+  signOut, 
+  updateEmail, 
+  updatePassword, 
+  onAuthStateChanged // <--- IMPORTED THIS
+} from 'firebase/auth'; 
 import { auth, db } from '../../../firebase'; 
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import Sidebar from '../Sidebar/Sidebar'; 
@@ -53,7 +58,6 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
   margin: 0;
   font-family: 'Segoe UI', sans-serif;
-  /* FIX: Prevent global scrolling */
   overflow: hidden; 
   height: 100vh;
 }
@@ -72,7 +76,6 @@ body {
   overflow: hidden;
 }
 
-/* FIX: Content area handles the scrolling */
 .content {
   flex: 1;
   margin-left: 280px; 
@@ -80,8 +83,8 @@ body {
   background: var(--bg-primary);
   display: flex;
   flex-direction: column;
-  height: 100vh; /* Occupy full height */
-  overflow-y: auto; /* Scroll internally */
+  height: 100vh;
+  overflow-y: auto;
   transition: margin-left 0.3s ease;
   overflow-x: hidden;
 }
@@ -545,20 +548,22 @@ const Layout = ({ navigation, userRole, notificationCount }) => {
     return () => document.removeEventListener('mousedown', handleClickOutsideDrawer);
   }, [showUserDrawer]);
 
+  // --- FIXED DATA FETCHING LOGIC ---
   useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        if (auth.currentUser) {
-          const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setLoading(true);
+      if (currentUser) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
           if (userDoc.exists()) {
             const userData = userDoc.data();
             setUser({
-              id: auth.currentUser.uid,
+              id: currentUser.uid,
               name: userData.fullName || userData.name || 'User',
               position: userData.position || 'Not specified',
               department: userData.department || 'Not specified',
               branch: userData.branch || 'Not specified',
-              email: auth.currentUser.email || userData.email, 
+              email: currentUser.email || userData.email, 
               phone: userData.phone || 'Not specified',
               hireDate: userData.hireDate || 'Not specified',
               role: userData.role || userRole || 'support',
@@ -566,15 +571,19 @@ const Layout = ({ navigation, userRole, notificationCount }) => {
               profileCompleted: userData.profileCompleted || false,
             });
           }
+        } catch (error) {
+          console.error('Error fetching user data:', error);
         }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      } finally {
-        setLoading(false);
+      } else {
+        // Redirect to login if not authenticated
+        navigate('/login');
       }
-    };
-    fetchUserData();
-  }, [userRole]);
+      setLoading(false);
+    });
+
+    // Cleanup subscription
+    return () => unsubscribe();
+  }, [userRole, navigate]);
 
   useEffect(() => {
     document.body.setAttribute('data-theme', theme);
@@ -586,7 +595,6 @@ const Layout = ({ navigation, userRole, notificationCount }) => {
       if (auth.currentUser) {
         const userRef = doc(db, 'users', auth.currentUser.uid);
         await updateDoc(userRef, { is2FAPending: true });
-        console.log('2FA Pending status reset.');
       }
       await signOut(auth);
       navigate('/login');
@@ -694,7 +702,7 @@ const Layout = ({ navigation, userRole, notificationCount }) => {
     const path = location.pathname;
     if (path.includes('dashboard')) return 'Overview';
     if (path.includes('customer')) return 'Customer Profile';
-    if (path.includes('settings')) return 'Settings';
+    if (path.includes('settings')) return 'Team';
     if (path.includes('support')) return 'Support Tickets';
     return 'Dashboard';
   };
@@ -703,7 +711,7 @@ const Layout = ({ navigation, userRole, notificationCount }) => {
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, role: ['admin', 'user'] },
     { name: 'Customer Profile', href: '/customer-profile', icon: Users, role: ['admin'] },
     { name: 'Support', href: '/support', icon: LifeBuoy, role: ['admin'] },
-    { name: 'Settings', href: '/settings', icon: Settings, role: ['admin'] }
+    { name: 'Team', href: '/settings', icon: Settings, role: ['admin'] }
   ];
 
   if (loading) {
@@ -746,6 +754,7 @@ const Layout = ({ navigation, userRole, notificationCount }) => {
       )}
 
       <div className="dashboard">
+        {/* Pass navigation to sidebar */}
         <Sidebar 
             navigation={sidebarNavigation} 
             userRole={user?.role} 

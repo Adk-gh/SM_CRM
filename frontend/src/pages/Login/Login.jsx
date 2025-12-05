@@ -440,7 +440,7 @@ const Login = () => {
               {branches.map(b => <option key={b} value={b}>{b}</option>)}
             </select>
             <input type="email" name="email" value={profileData.email} disabled />
-            <input type="tel" name="phone" value={profileData.phone} onChange={handleProfileInputChange} placeholder="Phone Number" required />
+           <input type="tel" name="phone" value={profileData.phone} onChange={handleProfileInputChange} placeholder="Phone Number" maxLength={11} required />
           </div>
         );
       case 3:

@@ -1,5 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { TrendingUp } from 'lucide-react';
+
 
 const Sidebar = ({ navigation, userRole, notificationCount }) => {
   const location = useLocation();
