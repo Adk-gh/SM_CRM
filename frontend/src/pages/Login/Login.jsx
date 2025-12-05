@@ -38,7 +38,7 @@ const styles = `
   width: 100vw;
   background: linear-gradient(135deg, var(--light-gray) 0%, var(--pale-blue) 100%);
   overflow: hidden;
-  padding: 20px; /* Add padding around the main container on smaller screens */
+  padding: 20px;
 }
 
 .container {
@@ -47,7 +47,6 @@ const styles = `
   box-shadow: var(--shadow-lift);
   position: relative;
   overflow: hidden;
-  /* Increased width and min-height for more space */
   width: 1000px; 
   max-width: 95%;
   min-height: 550px; 
@@ -64,7 +63,6 @@ const styles = `
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  /* Increased padding for better internal spacing */
   padding: 40px 50px; 
   text-align: center;
 }
@@ -78,7 +76,6 @@ const styles = `
 .profile-setup-container {
   left: 0; width: 100%; height: 100%; z-index: 10; opacity: 0; pointer-events: none;
   background: var(--white); display: flex; flex-direction: column; align-items: center; justify-content: center;
-  /* Increased padding for profile setup as well */
   padding: 40px 50px; 
 }
 .container.profile-setup-active .profile-setup-container { opacity: 1; pointer-events: all; z-index: 200; }
@@ -91,24 +88,23 @@ form {
   flex-direction: column;
   height: 100%;
   width: 100%;
-  /* Ensure form takes up space and has gaps */
   gap: 15px; 
 }
 
 .logo { 
-  width: 90px; /* Slightly bigger logo */
+  width: 90px;
   height: 90px; 
   border-radius: 50%; 
   object-fit: cover; 
-  margin-bottom: 25px; /* Increased space below logo */
+  margin-bottom: 25px;
   box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
 }
 h1 { font-weight: 700; color: var(--dark-blue); margin-bottom: 10px; font-size: 28px; }
 p { color: var(--dark-blue); font-size: 15px; margin-bottom: 30px; opacity: 0.8; }
 
 input, select {
-  background-color: #f4f8fb; border: 1px solid #e1e5e9; padding: 14px 18px; margin: 10px 0; /* More padding and margin */
-  width: 100%; max-width: 340px; /* Slightly wider inputs */
+  background-color: #f4f8fb; border: 1px solid #e1e5e9; padding: 14px 18px; margin: 10px 0;
+  width: 100%; max-width: 340px;
   border-radius: 8px; font-size: 15px; color: var(--dark-blue); transition: var(--transition);
 }
 input:focus, select:focus { outline: none; border-color: var(--mid-blue); background-color: #fff; box-shadow: 0 0 0 3px rgba(110, 159, 193, 0.15); }
@@ -121,7 +117,7 @@ input:focus, select:focus { outline: none; border-color: var(--mid-blue); backgr
 button {
   border-radius: 30px; border: none; background-color: var(--dark-blue); color: #ffffff;
   font-size: 14px; font-weight: 600; padding: 14px 50px; letter-spacing: 1px; text-transform: uppercase;
-  transition: transform 80ms ease-in; margin-top: 30px; /* Increased margin top */
+  transition: transform 80ms ease-in; margin-top: 30px;
   cursor: pointer; box-shadow: 0 4px 10px rgba(57, 90, 127, 0.2);
 }
 button:active { transform: scale(0.95); }
@@ -143,7 +139,6 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 .container.right-panel-active .overlay { transform: translateX(50%); }
 .overlay-panel {
   position: absolute; display: flex; align-items: center; justify-content: center; flex-direction: column;
-  /* Increased padding in overlay */
   padding: 0 60px; 
   text-align: center; top: 0; height: 100%; width: 50%; transform: translateX(0); transition: transform 0.6s ease-in-out;
 }
@@ -181,6 +176,7 @@ button.ghost { background-color: transparent; border-color: #ffffff; border-widt
 
 .error-message { color: var(--danger); font-size: 13px; margin-bottom: 15px; background: #ffebee; padding: 12px; border-radius: 6px; width: 100%; max-width: 340px; }
 .success-message { color: var(--success); font-size: 13px; margin-bottom: 15px; background: #e8f5e9; padding: 12px; border-radius: 6px; width: 100%; max-width: 340px; }
+.password-hint { font-size: 11px; color: var(--danger); margin-top: -8px; margin-bottom: 8px; text-align: left; width: 100%; max-width: 340px; padding-left: 5px; }
 
 @media (max-width: 768px) {
   .container { min-height: 650px; width: 100%; border-radius: var(--radius); }
@@ -215,6 +211,7 @@ const Login = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [passwordError, setPasswordError] = useState(''); // NEW: Track password specific error
   const [successMessage, setSuccessMessage] = useState('');
 
   // 🔒 Security & 2FA State
@@ -231,6 +228,16 @@ const Login = () => {
   const [showSignupConfirmPassword, setShowSignupConfirmPassword] = useState(false);
 
   const branches = ['SM City San Pablo'];
+
+  // --- NEW VALIDATION HELPER ---
+  const validatePassword = (password) => {
+    if (!password) return "";
+    if (password.length < 8) return "Password must be at least 8 characters.";
+    if (!/[A-Z]/.test(password)) return "Must contain at least 1 uppercase letter.";
+    if (!/[0-9]/.test(password)) return "Must contain at least 1 number.";
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) return "Must contain at least 1 special character.";
+    return "";
+  };
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -255,8 +262,14 @@ const Login = () => {
   }, [is2FAEnabled, twoFATimer]);
 
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
     setError('');
+
+    // Real-time validation for signup password
+    if (name === 'signupPassword') {
+      setPasswordError(validatePassword(value));
+    }
   };
 
   const handleProfileInputChange = (e) => {
@@ -335,9 +348,23 @@ const Login = () => {
   const handleSignUp = async (e) => {
     e.preventDefault();
     setLoading(true);
+    
+    // Check match
     if (formData.signupPassword !== formData.signupConfirmPassword) {
-      setError("Passwords don't match."); setLoading(false); return;
+      setError("Passwords don't match."); 
+      setLoading(false); 
+      return;
     }
+
+    // Check complexity
+    const complexError = validatePassword(formData.signupPassword);
+    if (complexError) {
+        setPasswordError(complexError);
+        setError("Please fix password issues.");
+        setLoading(false);
+        return;
+    }
+
     try {
       const cred = await createUserWithEmailAndPassword(auth, formData.signupEmail, formData.signupPassword);
       await updateProfile(cred.user, { displayName: formData.signupFullName });
@@ -484,11 +511,31 @@ const Login = () => {
               <input type="text" name="signupUsername" placeholder="Username" value={formData.signupUsername} onChange={handleInputChange} required />
               
               <div className="password-input-wrapper">
-                <input type={showSignupPassword ? "text" : "password"} name="signupPassword" placeholder="Password" value={formData.signupPassword} onChange={handleInputChange} required />
+                <input 
+                  type={showSignupPassword ? "text" : "password"} 
+                  name="signupPassword" 
+                  placeholder="Password" 
+                  value={formData.signupPassword} 
+                  onChange={handleInputChange} 
+                  maxLength={64}
+                  required 
+                />
                 <span className="password-toggle" onClick={() => setShowSignupPassword(!showSignupPassword)}>{showSignupPassword ? <EyeIcon/> : <EyeSlashIcon/>}</span>
               </div>
+              
+              {/* Display Password Complexity Errors */}
+              {passwordError && <div className="password-hint">{passwordError}</div>}
+
               <div className="password-input-wrapper">
-                <input type={showSignupConfirmPassword ? "text" : "password"} name="signupConfirmPassword" placeholder="Confirm Password" value={formData.signupConfirmPassword} onChange={handleInputChange} required />
+                <input 
+                  type={showSignupConfirmPassword ? "text" : "password"} 
+                  name="signupConfirmPassword" 
+                  placeholder="Confirm Password" 
+                  value={formData.signupConfirmPassword} 
+                  onChange={handleInputChange} 
+                  maxLength={64}
+                  required 
+                />
                 <span className="password-toggle" onClick={() => setShowSignupConfirmPassword(!showSignupConfirmPassword)}>{showSignupConfirmPassword ? <EyeIcon/> : <EyeSlashIcon/>}</span>
               </div>
 

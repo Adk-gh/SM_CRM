@@ -7,9 +7,7 @@ import {
     RefreshCw, 
     User, 
     Star, 
-    BarChart2, 
-    CheckCircle,
-    AlertCircle
+    BarChart2
 } from 'lucide-react';
 
 // Register Chart.js components
@@ -37,14 +35,10 @@ const formatDate = (timestamp) => {
     }
 };
 
-// --- CSS STYLES (Embedded) ---
+// --- CSS STYLES ---
 const styles = `
-/* Base Reset */
-* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
-
 /* Variables */
 :root {
-  /* Light Theme */
   --bg-primary: #E9ECEE;
   --bg-secondary: #F4F4F4;
   --text-primary: #395A7F;
@@ -52,25 +46,13 @@ const styles = `
   --text-light: #ACACAC;
   --accent-primary: #395A7F;
   --accent-secondary: #6E9FC1;
-  --accent-light: #A3CAE9;
   --border-light: #ACACAC;
   --card-bg: #FFFFFF;
   --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  --card-hover: 0 10px 30px rgba(0, 0, 0, 0.12);
-  
-  /* Status Colors */
-  --success-bg: rgba(72, 187, 120, 0.1);
-  --success-text: #48BB78;
-  --warning-bg: rgba(246, 173, 85, 0.1);
-  --warning-text: #F6AD55;
-  --danger-bg: rgba(239, 68, 68, 0.1);
-  --danger-text: #EF4444;
   --info-bg: rgba(57, 90, 127, 0.1);
-  --info-text: #395A7F;
 }
 
 [data-theme="dark"] {
-  /* Dark Theme */
   --bg-primary: #1E2A38;
   --bg-secondary: #2C3E50;
   --text-primary: #E9ECEE;
@@ -78,40 +60,28 @@ const styles = `
   --text-light: #94A3B8;
   --accent-primary: #68D391;
   --accent-secondary: #63B3ED;
-  --accent-light: #4299E1;
   --border-light: #4A5568;
   --card-bg: #2C3E50;
   --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  --card-hover: 0 10px 30px rgba(0, 0, 0, 0.4);
-
-  /* Dark Status Colors */
-  --success-bg: rgba(104, 211, 145, 0.2);
-  --success-text: #68D391;
-  --warning-bg: rgba(251, 211, 141, 0.2);
-  --warning-text: #FBD38D;
   --info-bg: rgba(99, 179, 237, 0.2);
-  --info-text: #63B3ED;
-}
-
-body {
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Layout */
 .profile-wrapper {
-  padding: 30px;
   width: 100%;
-  min-height: 100vh;
+  height: 100%; 
   background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
 }
 
 .profile-layout {
   display: flex;
   flex-direction: column;
-  gap: 30px;
-  height: calc(100vh - 150px);
+  gap: 20px;
+  flex: 1;
+  min-height: 0; 
+  padding: 0;
 }
 
 @media (min-width: 1024px) {
@@ -120,28 +90,30 @@ body {
   }
 }
 
-/* --- CUSTOMER LIST PANEL --- */
+/* --- CUSTOMER LIST PANEL (LEFT) --- */
 .list-panel {
-  flex: 0 0 400px;
+  flex: 0 0 350px; /* Slightly narrower for better proportion */
   background: var(--card-bg);
-  border-radius: 16px;
+  border-radius: 12px;
   box-shadow: var(--card-shadow);
   border: 1px solid var(--border-light);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  height: 100%; 
 }
 
 .panel-header {
-  padding: 25px;
+  padding: 20px;
   border-bottom: 1px solid var(--border-light);
+  background: var(--card-bg);
 }
 
 .panel-header h3 {
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 20px;
+  margin-bottom: 15px;
 }
 
 .search-container {
@@ -157,43 +129,44 @@ body {
 
 .search-icon {
   position: absolute;
-  left: 15px;
+  left: 12px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-light);
+  width: 16px;
+  height: 16px;
 }
 
 .search-input {
   width: 100%;
-  padding: 12px 15px 12px 45px;
-  border-radius: 12px;
+  padding: 10px 10px 10px 35px;
+  border-radius: 8px;
   border: 1px solid var(--border-light);
   background: var(--bg-secondary);
   color: var(--text-primary);
-  font-size: 14px;
-  height: 46px;
+  font-size: 13px;
+  height: 40px;
   outline: none;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .search-input:focus {
   border-color: var(--accent-secondary);
-  box-shadow: 0 0 0 3px rgba(110, 159, 193, 0.1);
 }
 
 .refresh-btn {
-  width: 46px;
-  height: 46px;
+  width: 40px;
+  height: 40px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
+  border-radius: 8px;
   border: 1px solid var(--border-light);
   background: var(--bg-secondary);
   color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .refresh-btn:hover:not(:disabled) {
@@ -210,11 +183,11 @@ body {
 .customer-item {
   display: flex;
   align-items: center;
-  padding: 20px 25px;
+  padding: 15px 20px;
   border-bottom: 1px solid var(--border-light);
   cursor: pointer;
   transition: all 0.2s ease;
-  height: 100px;
+  height: 80px;
 }
 
 .customer-item:hover {
@@ -224,12 +197,12 @@ body {
 .customer-item.active {
   background: var(--info-bg);
   border-left: 4px solid var(--accent-primary);
-  padding-left: 21px;
+  padding-left: 16px;
 }
 
 .avatar {
-  width: 50px;
-  height: 50px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
   display: flex;
@@ -237,36 +210,37 @@ body {
   justify-content: center;
   color: #fff;
   font-weight: 700;
-  font-size: 18px;
+  font-size: 14px;
   margin-right: 15px;
   flex-shrink: 0;
 }
 
 .info h4 {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .info p {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* --- DETAILS PANEL --- */
+/* --- DETAILS PANEL (RIGHT) --- */
 .details-panel {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
   padding-right: 5px;
+  height: 100%;
 }
 
 .empty-state {
@@ -277,65 +251,64 @@ body {
   height: 100%;
   color: var(--text-light);
   border: 2px dashed var(--border-light);
-  border-radius: 16px;
+  border-radius: 12px;
   background: var(--bg-secondary);
+  opacity: 0.7;
 }
 
-.tabs {
-  display: flex;
-  border-bottom: 1px solid var(--border-light);
-  margin-bottom: 25px;
-}
-
-.tab {
-  padding: 12px 30px;
-  cursor: pointer;
-  font-weight: 600;
-  color: var(--text-secondary);
-  border-bottom: 3px solid transparent;
-  transition: all 0.3s ease;
-  font-size: 14px;
-}
-
-.tab:hover { color: var(--accent-primary); }
-.tab.active { color: var(--accent-primary); border-bottom-color: var(--accent-primary); }
-
-/* --- FIXED INFO CARD STYLING --- */
+/* --- CARDS & GRID LAYOUT --- */
 .card {
   background: var(--card-bg);
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 25px;
   box-shadow: var(--card-shadow);
   border: 1px solid var(--border-light);
-  margin-bottom: 25px;
+  margin-bottom: 20px;
   position: relative;
   overflow: hidden;
+  /* Removed fixed height to let content dictate size */
 }
 
 .card::before {
   content: '';
   position: absolute;
-  top: 0; left: 0; right: 0; height: 4px;
+  top: 0; left: 0; right: 0; height: 3px;
   background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
 }
 
 .card h3 {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 25px;
+  margin-bottom: 20px;
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+/* --- SPLIT DASHBOARD GRID --- */
+.split-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+@media (min-width: 1400px) {
+  .split-dashboard {
+    display: grid;
+    /* Reviews takes 60%, Chart takes 40% */
+    grid-template-columns: 3fr 2fr; 
+    align-items: start; /* FIXED: Prevents stretching */
+    gap: 20px;
+  }
 }
 
 .detail-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 0;
+  padding: 12px 0;
   border-bottom: 1px solid var(--border-light);
-  width: 100%;
 }
 
 .detail-row:last-child {
@@ -345,7 +318,7 @@ body {
 .detail-label {
   color: var(--text-secondary);
   font-weight: 700;
-  font-size: 12px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -353,85 +326,72 @@ body {
 .detail-value {
   color: var(--text-primary);
   font-weight: 600;
-  font-size: 15px;
+  font-size: 14px;
   text-align: right;
 }
 
 /* Reviews Specifics */
 .reviews-filters {
   display: flex;
-  gap: 15px;
-  margin-bottom: 20px;
+  gap: 10px;
+  margin-bottom: 15px;
 }
 
 .filter-input {
   flex: 1;
-  padding: 10px 15px;
-  border-radius: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
   border: 1px solid var(--border-light);
   background: var(--bg-secondary);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: 12px;
   outline: none;
+}
+
+/* Scrollable Ticket List with Max Height */
+.ticket-list {
+  max-height: 400px; /* Controls height of review list */
+  overflow-y: auto;
+  padding-right: 5px;
 }
 
 .review-item {
   padding: 15px;
   border-bottom: 1px solid var(--border-light);
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  margin-bottom: 10px;
   transition: background-color 0.2s;
 }
-.review-item:hover { background: var(--bg-secondary); }
-.review-item:last-child { border-bottom: none; }
+.review-item:hover { background: var(--bg-primary); }
+.review-item:last-child { margin-bottom: 0; }
 
 .review-header { display: flex; justify-content: space-between; margin-bottom: 5px; }
-.review-user { font-weight: 600; color: var(--text-primary); font-size: 14px; }
-.review-date { font-size: 12px; color: var(--text-light); }
-.review-rating { color: #F59E0B; font-size: 13px; margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
-.review-text { font-size: 13px; color: var(--text-primary); font-style: italic; }
-
-/* Analytics Grid */
-.analytics-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 25px;
-}
-@media (min-width: 1024px) { .analytics-grid { grid-template-columns: 1fr 1fr; } }
+.review-user { font-weight: 600; color: var(--text-primary); font-size: 13px; }
+.review-date { font-size: 11px; color: var(--text-light); }
+.review-rating { color: #F59E0B; font-size: 12px; margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
+.review-text { font-size: 13px; color: var(--text-primary); font-style: italic; line-height: 1.4; }
 
 .chart-container { height: 250px; width: 100%; position: relative; }
-.no-data { height: 100%; display: flex; align-items: center; justify-content: center; color: var(--text-light); font-size: 13px; }
-
-/* Ticket List */
-.ticket-list { max-height: 300px; overflow-y: auto; }
-.ticket-item { padding: 15px 10px; border-bottom: 1px solid var(--border-light); transition: background 0.2s; }
-.ticket-item:hover { background: var(--bg-secondary); }
-
-.status-badge {
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-.status-open { background: var(--warning-bg); color: var(--warning-text); }
-.status-resolved { background: var(--success-bg); color: var(--success-text); }
-.status-closed { background: var(--bg-secondary); color: var(--text-light); }
+.no-data { height: 250px; display: flex; align-items: center; justify-content: center; color: var(--text-light); font-size: 13px; }
 
 /* Animation & Scrollbar */
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .animate-in { animation: fadeIn 0.4s ease-out forwards; }
 
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--bg-secondary); }
-::-webkit-scrollbar-thumb { background: var(--accent-light); border-radius: 3px; }
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-light); }
 `;
 
 const CustomerProfile = () => {
-    const [activeTab, setActiveTab] = useState('overview');
+    // --- STATE MANAGEMENT ---
     const [currentCustomer, setCurrentCustomer] = useState(null);
     const [customers, setCustomers] = useState([]);
     const [filteredCustomers, setFilteredCustomers] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [isDark, setIsDark] = useState(false); // Theme state for charts
+    const [isDark, setIsDark] = useState(false); 
     
     // Data States
     const [reviews, setReviews] = useState([]);
@@ -445,7 +405,7 @@ const CustomerProfile = () => {
 
     // Chart Refs
     const satisfactionChartRef = useRef(null);
-    const [charts, setCharts] = useState({});
+    const chartInstance = useRef(null);
 
     // --- THEME LISTENER ---
     useEffect(() => {
@@ -459,19 +419,18 @@ const CustomerProfile = () => {
         return () => observer.disconnect();
     }, []);
 
-    // --- DATA FETCHING (MODIFIED TO USE BACKEND API) ---
+    // --- DATA FETCHING (WITH ROBUST FALLBACK) ---
     const fetchCustomers = useCallback(async () => {
         try {
-            // Call your Vercel Backend to sync with Shopping API
+            // 1. Try fetching from Vercel API
             const response = await fetch("https://sm-crm-rho.vercel.app/api/customer");
-
+            
             if (!response.ok) {
-                throw new Error('Failed to fetch customers from backend API');
+                // If 500 or other error, throw to catch block
+                throw new Error(`API Error: ${response.status}`);
             }
 
             const data = await response.json();
-            
-            // Assuming your backend returns { customers: [...] } based on your node.js structure
             const customersList = data.customers || [];
             
             setCustomers(customersList);
@@ -487,22 +446,26 @@ const CustomerProfile = () => {
                 setCurrentCustomer(null);
             }
         } catch (err) {
-            console.error('Error fetching customers:', err);
+            console.warn('API Failed, switching to Firebase direct fetch:', err);
             
-            // OPTIONAL: Fallback to reading Firestore directly if API fails
+            // 2. FALLBACK: Fetch directly from Firebase Firestore
             try {
                  const customersCollection = collection(db, 'customers');
                  const customersSnapshot = await getDocs(customersCollection);
+                 
                  const fallbackList = customersSnapshot.docs.map(doc => ({
                      id: doc.id,
                      ...doc.data()
                  }));
-                 if (fallbackList.length > 0) {
-                    setCustomers(fallbackList);
-                    setFilteredCustomers(fallbackList);
+                 
+                 setCustomers(fallbackList);
+                 setFilteredCustomers(fallbackList);
+                 
+                 if (fallbackList.length > 0 && !currentCustomer) {
+                    setCurrentCustomer(fallbackList[0]);
                  }
             } catch (fbErr) {
-                console.error("Firestore fallback failed", fbErr);
+                console.error("Firestore fallback also failed:", fbErr);
             }
         }
     }, [currentCustomer]);
@@ -553,12 +516,12 @@ const CustomerProfile = () => {
         }
     }, []);
 
+    // --- EFFECT HOOKS ---
     useEffect(() => {
         if (currentCustomer) fetchUserData(currentCustomer);
         else { setReviews([]); setCustomerTickets([]); }
     }, [currentCustomer, fetchUserData]);
 
-    // --- RELOAD HANDLERS ---
     const handleReloadReviews = async () => {
         setLoadingReviews(true);
         try {
@@ -573,7 +536,6 @@ const CustomerProfile = () => {
         }
     };
 
-    // Initial Load
     useEffect(() => {
         const init = async () => {
             setLoading(true);
@@ -583,7 +545,6 @@ const CustomerProfile = () => {
         init();
     }, [fetchCustomers]);
 
-    // Search Filtering
     useEffect(() => {
         if (customerSearch) {
             const filtered = customers.filter(c => 
@@ -599,38 +560,24 @@ const CustomerProfile = () => {
         }
     }, [customerSearch, customers]);
 
-    // --- CHARTS ---
+    // --- CHART INITIALIZATION ---
     useEffect(() => {
-        if (activeTab === 'analytics' && currentCustomer) {
-            setTimeout(() => initializeCharts(), 100);
-        }
-        return () => Object.values(charts).forEach(c => c && c.destroy());
-    }, [activeTab, currentCustomer, reviews, isDark]);
-
-    const getFilteredReviews = () => {
-        return reviews.filter(r => {
-            const matchesSearch = (r.comment || '').toLowerCase().includes(reviewSearch.toLowerCase()) ||
-                                  (r.title || '').toLowerCase().includes(reviewSearch.toLowerCase());
-            const matchesRating = reviewRatingFilter === 'all' || r.rating === parseInt(reviewRatingFilter);
-            return matchesSearch && matchesRating;
-        });
-    };
-
-    const initializeCharts = () => {
-        Object.values(charts).forEach(c => c && c.destroy());
-        const newCharts = {};
-        const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
-        const textColor = isDark ? '#E9ECEE' : '#395A7F';
-
-        // Satisfaction Chart
         if (satisfactionChartRef.current && reviews.length > 0) {
+            if (chartInstance.current) {
+                chartInstance.current.destroy();
+            }
+
+            const ctx = satisfactionChartRef.current.getContext('2d');
+            const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
+            const textColor = isDark ? '#E9ECEE' : '#395A7F';
+
             const ratingCounts = [0, 0, 0, 0, 0];
             reviews.forEach(r => {
                 const rate = Math.round(r.rating || 0);
                 if (rate >= 1 && rate <= 5) ratingCounts[rate - 1]++;
             });
 
-            newCharts.satisfactionChart = new Chart(satisfactionChartRef.current, {
+            chartInstance.current = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: ['1 Star', '2 Stars', '3 Stars', '4 Stars', '5 Stars'],
@@ -659,7 +606,21 @@ const CustomerProfile = () => {
                 }
             });
         }
-        setCharts(newCharts);
+
+        return () => {
+            if (chartInstance.current) {
+                chartInstance.current.destroy();
+            }
+        };
+    }, [reviews, isDark]);
+
+    const getFilteredReviews = () => {
+        return reviews.filter(r => {
+            const matchesSearch = (r.comment || '').toLowerCase().includes(reviewSearch.toLowerCase()) ||
+                                  (r.title || '').toLowerCase().includes(reviewSearch.toLowerCase());
+            const matchesRating = reviewRatingFilter === 'all' || r.rating === parseInt(reviewRatingFilter);
+            return matchesSearch && matchesRating;
+        });
     };
 
     return (
@@ -673,7 +634,7 @@ const CustomerProfile = () => {
                         <h3>Customers</h3>
                         <div className="search-container">
                             <div className="search-box-wrapper">
-                                <Search className="search-icon" size={18} />
+                                <Search className="search-icon" size={16} />
                                 <input 
                                     type="text" 
                                     placeholder="Search..." 
@@ -687,7 +648,7 @@ const CustomerProfile = () => {
                                 onClick={async () => { setLoading(true); await fetchCustomers(); setLoading(false); }}
                                 disabled={loading}
                             >
-                                <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                             </button>
                         </div>
                     </div>
@@ -723,117 +684,96 @@ const CustomerProfile = () => {
                             <p>Select a customer to view profile</p>
                         </div>
                     ) : (
-                        <>
-                            {/* TABS */}
-                            <div className="tabs">
-                                {['overview', 'analytics'].map(tab => (
-                                    <div 
-                                        key={tab} 
-                                        className={`tab ${activeTab === tab ? 'active' : ''}`}
-                                        onClick={() => setActiveTab(tab)}
-                                    >
-                                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                                    </div>
-                                ))}
+                        <div className="animate-in">
+                            {/* 1. CUSTOMER INFORMATION CARD */}
+                            <div className="card">
+                                <h3><User size={18} /> Customer Information</h3>
+                                <div>
+                                    {[
+                                        { label: 'FULL NAME', value: currentCustomer.fullName },
+                                        { label: 'EMAIL', value: currentCustomer.email },
+                                        { label: 'MEMBER SINCE', value: formatDate(currentCustomer.createdAt) },
+                                        { label: 'TOTAL REVIEWS', value: reviews.length },
+                                        { label: 'SUPPORT TICKETS', value: customerTickets.length },
+                                    ].map((item, i) => (
+                                        <div key={i} className="detail-row">
+                                            <span className="detail-label">{item.label}</span>
+                                            <span className="detail-value">
+                                                {(item.value !== undefined && item.value !== null) ? item.value : 'N/A'}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
 
-                            {/* OVERVIEW TAB */}
-                            {activeTab === 'overview' && (
-                                <div className="animate-in">
-                                    <div className="card">
-                                        <h3><User size={18} /> Customer Information</h3>
-                                        <div>
-                                            {[
-                                                { label: 'FULL NAME', value: currentCustomer.fullName },
-                                                { label: 'EMAIL', value: currentCustomer.email },
-                                                { label: 'MEMBER SINCE', value: formatDate(currentCustomer.createdAt) },
-                                                { label: 'TOTAL REVIEWS', value: reviews.length },
-                                                { label: 'SUPPORT TICKETS', value: customerTickets.length },
-                                            ].map((item, i) => (
-                                                <div key={i} className="detail-row">
-                                                    <span className="detail-label">{item.label}</span>
-                                                    <span className="detail-value">
-                                                        {(item.value !== undefined && item.value !== null) ? item.value : 'N/A'}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
+                            {/* 2. SPLIT LAYOUT: REVIEWS & GRAPH */}
+                            <div className="split-dashboard">
+                                {/* LEFT: REVIEWS (Scrollable) */}
+                                <div className="card">
+                                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px'}}>
+                                        <h3><Star size={18} /> Customer Reviews</h3>
+                                        <button 
+                                            className="refresh-btn" 
+                                            style={{width:'32px', height:'32px'}}
+                                            onClick={handleReloadReviews}
+                                            disabled={loadingReviews}
+                                        >
+                                            <RefreshCw size={14} className={loadingReviews?'animate-spin':''} />
+                                        </button>
                                     </div>
 
-                                    <div className="card">
-                                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px'}}>
-                                            <h3><Star size={18} /> Customer Reviews</h3>
-                                            <button 
-                                                className="refresh-btn" 
-                                                style={{width:'36px', height:'36px'}}
-                                                onClick={handleReloadReviews}
-                                                disabled={loadingReviews}
-                                            >
-                                                <RefreshCw size={14} className={loadingReviews?'animate-spin':''} />
-                                            </button>
-                                        </div>
+                                    <div className="reviews-filters">
+                                        <input 
+                                            type="text" 
+                                            placeholder="Search review content..." 
+                                            className="filter-input"
+                                            value={reviewSearch}
+                                            onChange={e => setReviewSearch(e.target.value)}
+                                        />
+                                        <select 
+                                            className="filter-input" 
+                                            value={reviewRatingFilter} 
+                                            onChange={e => setReviewRatingFilter(e.target.value)}
+                                        >
+                                            <option value="all">All Ratings</option>
+                                            {[5,4,3,2,1].map(r => <option key={r} value={r}>{r} Stars</option>)}
+                                        </select>
+                                    </div>
 
-                                        <div className="reviews-filters">
-                                            <input 
-                                                type="text" 
-                                                placeholder="Search review content..." 
-                                                className="filter-input"
-                                                value={reviewSearch}
-                                                onChange={e => setReviewSearch(e.target.value)}
-                                            />
-                                            <select 
-                                                className="filter-input" 
-                                                value={reviewRatingFilter} 
-                                                onChange={e => setReviewRatingFilter(e.target.value)}
-                                            >
-                                                <option value="all">All Ratings</option>
-                                                {[5,4,3,2,1].map(r => <option key={r} value={r}>{r} Stars</option>)}
-                                            </select>
-                                        </div>
-
-                                        <div className="ticket-list">
-                                            {getFilteredReviews().length === 0 ? (
-                                                <div style={{textAlign:'center', padding:'20px', color:'var(--text-light)'}}>No reviews found.</div>
-                                            ) : (
-                                                getFilteredReviews().map(r => (
-                                                    <div key={r.id} className="review-item">
-                                                        <div className="review-header">
-                                                            <span className="review-user">{r.title || 'Review'}</span>
-                                                            <span className="review-date">{formatDate(r.timestamp)}</span>
-                                                        </div>
-                                                        <div className="review-rating">
-                                                            {'★'.repeat(r.rating)}{'☆'.repeat(5-(r.rating||0))}
-                                                            <span style={{color:'var(--text-primary)', marginLeft:'5px'}}>{r.rating}/5</span>
-                                                        </div>
-                                                        <p className="review-text">"{r.comment}"</p>
+                                    <div className="ticket-list">
+                                        {getFilteredReviews().length === 0 ? (
+                                            <div style={{textAlign:'center', padding:'20px', color:'var(--text-light)'}}>No reviews found.</div>
+                                        ) : (
+                                            getFilteredReviews().map(r => (
+                                                <div key={r.id} className="review-item">
+                                                    <div className="review-header">
+                                                        <span className="review-user">{r.title || 'Review'}</span>
+                                                        <span className="review-date">{formatDate(r.timestamp)}</span>
                                                     </div>
-                                                ))
-                                            )}
-                                        </div>
+                                                    <div className="review-rating">
+                                                        {'★'.repeat(r.rating)}{'☆'.repeat(5-(r.rating||0))}
+                                                        <span style={{color:'var(--text-primary)', marginLeft:'5px'}}>{r.rating}/5</span>
+                                                    </div>
+                                                    <p className="review-text">"{r.comment}"</p>
+                                                </div>
+                                            ))
+                                        )}
                                     </div>
                                 </div>
-                            )}
 
-                            {/* ANALYTICS TAB */}
-                            {activeTab === 'analytics' && (
-                                <div className="animate-in">
-                                    <div className="analytics-grid">
-                                        {/* SATISFACTION CHART */}
-                                        <div className="card">
-                                            <h3><BarChart2 size={18} /> Satisfaction Distribution</h3>
-                                            <div className="chart-container">
-                                                {reviews.length > 0 ? (
-                                                    <canvas ref={satisfactionChartRef}></canvas>
-                                                ) : (
-                                                    <div className="no-data">No review data available.</div>
-                                                )}
-                                            </div>
-                                        </div>
-
+                                {/* RIGHT: SATISFACTION CHART (Sticky height) */}
+                                <div className="card" style={{height:'fit-content'}}>
+                                    <h3><BarChart2 size={18} /> Satisfaction</h3>
+                                    <div className="chart-container">
+                                        {reviews.length > 0 ? (
+                                            <canvas ref={satisfactionChartRef}></canvas>
+                                        ) : (
+                                            <div className="no-data">No review data available.</div>
+                                        )}
                                     </div>
                                 </div>
-                            )}
-                        </>
+                            </div>
+                        </div>
                     )}
                 </div>
             </div>

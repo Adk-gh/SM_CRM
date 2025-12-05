@@ -53,19 +53,26 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
   margin: 0;
   font-family: 'Segoe UI', sans-serif;
+  /* FIX: Prevent global scrolling */
+  overflow: hidden; 
+  height: 100vh;
 }
 
 /* Main Layout Structure */
 .dashboard-container {
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .dashboard {
   display: flex;
-  min-height: 100vh;
+  height: 100%;
+  overflow: hidden;
 }
 
-/* --- LAYOUT FIX: Sidebar Offset --- */
+/* FIX: Content area handles the scrolling */
 .content {
   flex: 1;
   margin-left: 280px; 
@@ -73,7 +80,8 @@ body {
   background: var(--bg-primary);
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh; /* Occupy full height */
+  overflow-y: auto; /* Scroll internally */
   transition: margin-left 0.3s ease;
   overflow-x: hidden;
 }
@@ -205,15 +213,16 @@ body {
   border-color: var(--accent-primary);
 }
 
-/* User Drawer (Right Side) */
+/* USER DRAWER - DARK SIDEBAR THEME */
 .user-drawer {
   position: fixed;
   top: 0;
-  right: -450px;
-  width: 400px;
+  right: -550px;
+  width: 500px;
   height: 100vh;
-  background: var(--bg-primary); 
-  box-shadow: -5px 0 25px rgba(0, 0, 0, 0.15);
+  background: #395A7F; 
+  color: white;
+  box-shadow: -5px 0 25px rgba(0, 0, 0, 0.3);
   z-index: 1500;
   transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow-y: auto;
@@ -230,17 +239,19 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 25px;
-  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  background: transparent;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   color: white;
 }
 
 .drawer-header h2 {
   margin: 0;
   font-size: 20px;
+  color: white;
 }
 
 .close-drawer {
-  background: rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.1);
   border: none;
   color: white;
   width: 32px;
@@ -252,7 +263,7 @@ body {
   justify-content: center;
   transition: 0.2s;
 }
-.close-drawer:hover { background: rgba(255,255,255,0.3); }
+.close-drawer:hover { background: rgba(255,255,255,0.25); }
 
 .user-details {
   padding: 25px;
@@ -262,36 +273,70 @@ body {
 }
 
 .details-card {
-  background: var(--card-bg);
-  border: 1px solid var(--border-light);
-  border-radius: 12px;
-  padding: 20px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
 }
 
+.details-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.details-header-row h3 {
+  margin: 0;
+  font-size: 16px;
+  color: white; 
+}
+
+.edit-icon-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  width: 35px;
+  height: 35px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.edit-icon-btn:hover {
+  background: white;
+  color: #395A7F;
+}
+
+/* View Mode Detail Items - Dark Glass Style */
 .detail-item {
   display: grid;
   grid-template-columns: 135px minmax(0, 1fr); 
   gap: 10px;
   align-items: center; 
   margin-bottom: 12px; 
-  background-color: var(--bg-secondary); 
-  border: 1px solid var(--border-light);
+  background-color: rgba(0, 0, 0, 0.2); 
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   padding: 12px 15px;
   width: 100%;
+  box-sizing: border-box; 
 }
 
 .detail-label {
   font-size: 13px;
   font-weight: 700;
-  color: var(--accent-primary);
+  color: #A3CAE9; 
   text-transform: uppercase;
 }
 
 .detail-value {
   font-size: 14px;
   font-weight: 500;
-  color: var(--text-primary);
+  color: white; 
   text-align: left;
   background-color: transparent; 
   border: none;
@@ -304,66 +349,75 @@ body {
 
 .detail-value::-webkit-scrollbar { display: none; }
 
-.edit-toggle {
-  width: 100%;
-  padding: 10px;
-  margin-top: 15px;
-  background: var(--bg-secondary);
-  color: var(--accent-primary);
-  border: 1px solid var(--accent-primary);
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: 0.2s;
-}
-.edit-toggle:hover { background: var(--accent-primary); color: white; }
-
 /* Edit Form */
 .edit-profile-form {
-  background: var(--card-bg);
-  padding: 20px;
-  border-radius: 12px;
-  border: 1px solid var(--border-light);
-  margin: 20px;
+  background: transparent;
+  padding: 0;
+  border: none;
+  margin: 20px 0;
   animation: fadeIn 0.3s;
 }
 
 .form-section-title {
     font-size: 12px;
     text-transform: uppercase;
-    color: var(--text-secondary);
+    color: #A3CAE9; 
     font-weight: 700;
     margin-bottom: 10px;
-    border-bottom: 1px solid var(--border-light);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     padding-bottom: 5px;
 }
 
 .form-group { margin-bottom: 15px; }
-.form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+.form-group label { 
+    display: block; 
+    margin-bottom: 6px; 
+    font-size: 13px; 
+    font-weight: 600; 
+    color: #E9ECEE; 
+}
 .form-group input {
   width: 100%; padding: 10px; border-radius: 8px;
-  border: 1px solid var(--border-light);
-  background: var(--bg-secondary); color: var(--text-primary);
+  border: 1px solid transparent;
+  background: #FFFFFF; 
+  color: #395A7F;
   outline: none;
 }
-.form-group input:focus { border-color: var(--accent-primary); }
+.form-group input:focus { 
+    border-color: #A3CAE9; 
+    box-shadow: 0 0 0 3px rgba(163, 202, 233, 0.3);
+}
 
 .password-group {
-    border: 1px solid var(--border-light);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     padding: 15px;
     border-radius: 8px;
-    background: rgba(255, 0, 0, 0.02);
+    background: rgba(0, 0, 0, 0.2);
     margin-bottom: 15px;
 }
 
 .form-actions { display: flex; gap: 10px; margin-top: 20px; }
-.btn { flex: 1; padding: 10px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; }
-.btn-primary { background: var(--accent-primary); color: white; }
-.btn-secondary { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-light); }
+
+.btn { 
+    flex: 1; padding: 10px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; 
+}
+.btn-primary { 
+    background: #48BB78; 
+    color: white; 
+}
+.btn-primary:hover {
+    background: #38A169;
+}
+
+.btn-secondary { 
+    background: transparent; 
+    color: white; 
+    border: 1px solid rgba(255, 255, 255, 0.3); 
+}
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: white;
+}
 
 .status-message {
     padding: 10px;
@@ -374,8 +428,8 @@ body {
     align-items: center;
     gap: 8px;
 }
-.status-error { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid var(--danger); }
-.status-success { background: rgba(72, 187, 120, 0.1); color: var(--success); border: 1px solid var(--success); }
+.status-error { background: rgba(239, 68, 68, 0.2); color: #FECACA; border: 1px solid #EF4444; }
+.status-success { background: rgba(72, 187, 120, 0.2); color: #C6F6D5; border: 1px solid #48BB78; }
 
 /* LOADING SCREEN */
 .loading-screen {
@@ -430,7 +484,7 @@ body {
 /* Responsive */
 @media (max-width: 768px) {
   .content { 
-    margin-left: 0; /* Reset margin on mobile */
+    margin-left: 0; 
     padding: 20px; 
   }
   .dashboard-header { flex-direction: column-reverse; align-items: flex-start; gap: 15px; }
@@ -439,7 +493,6 @@ body {
 }
 `;
 
-// 1. ADD notificationCount to Props
 const Layout = ({ navigation, userRole, notificationCount }) => {
   const [theme, setTheme] = useState(localStorage.getItem('sm-theme') || 'light');
   const [user, setUser] = useState(null);
@@ -469,7 +522,6 @@ const Layout = ({ navigation, userRole, notificationCount }) => {
   const profileMenuRef = useRef(null);
   const userDrawerRef = useRef(null);
 
-  // Close profile menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
@@ -480,7 +532,6 @@ const Layout = ({ navigation, userRole, notificationCount }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showProfileMenu]);
 
-  // Close user drawer when clicking outside
   useEffect(() => {
     const handleClickOutsideDrawer = (event) => {
       const isClickOnProfileTrigger = profileMenuRef.current && profileMenuRef.current.contains(event.target);
@@ -494,7 +545,6 @@ const Layout = ({ navigation, userRole, notificationCount }) => {
     return () => document.removeEventListener('mousedown', handleClickOutsideDrawer);
   }, [showUserDrawer]);
 
-  // Fetch user data
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -508,7 +558,7 @@ const Layout = ({ navigation, userRole, notificationCount }) => {
               position: userData.position || 'Not specified',
               department: userData.department || 'Not specified',
               branch: userData.branch || 'Not specified',
-              email: auth.currentUser.email || userData.email, // Prefer Auth email
+              email: auth.currentUser.email || userData.email, 
               phone: userData.phone || 'Not specified',
               hireDate: userData.hireDate || 'Not specified',
               role: userData.role || userRole || 'support',
@@ -531,26 +581,17 @@ const Layout = ({ navigation, userRole, notificationCount }) => {
     localStorage.setItem('sm-theme', theme);
   }, [theme]);
 
-  // --- UPDATED LOGOUT FUNCTION ---
   const confirmLogout = async () => {
     try {
       if (auth.currentUser) {
-        // Set is2FAPending to true in Firestore BEFORE signing out
         const userRef = doc(db, 'users', auth.currentUser.uid);
-        
-        await updateDoc(userRef, {
-          is2FAPending: true
-        });
-        
+        await updateDoc(userRef, { is2FAPending: true });
         console.log('2FA Pending status reset.');
       }
-      
       await signOut(auth);
       navigate('/login');
-      
     } catch (error) {
       console.error('Error signing out:', error);
-      // Fallback: Logout anyway
       await signOut(auth);
       navigate('/login');
     } finally {
@@ -583,7 +624,6 @@ const Layout = ({ navigation, userRole, notificationCount }) => {
     setFormStatus({ type: '', message: '' });
     setIsSaving(true);
     
-    // 1. Validation
     if (editForm.newPassword && editForm.newPassword !== editForm.confirmPassword) {
       setFormStatus({ type: 'error', message: 'Passwords do not match.' });
       setIsSaving(false);
@@ -598,30 +638,25 @@ const Layout = ({ navigation, userRole, notificationCount }) => {
 
     try {
       if (auth.currentUser) {
-        // 2. Update Firestore Data
         const userRef = doc(db, 'users', auth.currentUser.uid);
         await updateDoc(userRef, {
           fullName: editForm.name,
           position: editForm.position,
           department: editForm.department,
           branch: editForm.branch,
-          // We also update email in Firestore for display purposes, but Auth is truth
           email: editForm.email,
           phone: editForm.phone,
           updatedAt: new Date()
         });
 
-        // 3. Update Auth Email if changed
         if (editForm.email !== user.email) {
             await updateEmail(auth.currentUser, editForm.email);
         }
 
-        // 4. Update Auth Password if provided
         if (editForm.newPassword) {
             await updatePassword(auth.currentUser, editForm.newPassword);
         }
 
-        // Update local state
         setUser(prev => ({ 
             ...prev, 
             name: editForm.name,
@@ -634,7 +669,6 @@ const Layout = ({ navigation, userRole, notificationCount }) => {
 
         setFormStatus({ type: 'success', message: 'Profile updated successfully!' });
         
-        // Close form after short delay
         setTimeout(() => {
             setShowEditForm(false);
             setFormStatus({ type: '', message: '' });
@@ -644,7 +678,6 @@ const Layout = ({ navigation, userRole, notificationCount }) => {
       console.error('Error updating profile:', error);
       let errorMsg = 'Failed to update profile.';
       
-      // Handle "Requires Recent Login" error from Firebase
       if (error.code === 'auth/requires-recent-login') {
           errorMsg = 'For security, please logout and login again to change sensitive info.';
       } else if (error.code === 'auth/email-already-in-use') {
@@ -704,7 +737,7 @@ const Layout = ({ navigation, userRole, notificationCount }) => {
               <button className="btn btn-logout" onClick={confirmLogout} style={{background:'#EF4444', color:'white'}}>
                 <LogOut size={16} /> Yes, Logout
               </button>
-              <button className="btn btn-secondary" onClick={() => setShowLogoutConfirmation(false)}>
+              <button className="btn btn-secondary" onClick={() => setShowLogoutConfirmation(false)} style={{color:'var(--text-primary)', border:'1px solid var(--border-light)'}}>
                 Cancel
               </button>
             </div>
@@ -713,7 +746,6 @@ const Layout = ({ navigation, userRole, notificationCount }) => {
       )}
 
       <div className="dashboard">
-        {/* 2. PASS notificationCount TO SIDEBAR */}
         <Sidebar 
             navigation={sidebarNavigation} 
             userRole={user?.role} 
@@ -770,15 +802,16 @@ const Layout = ({ navigation, userRole, notificationCount }) => {
         <div className="user-details">
           {!showEditForm ? (
               <div className="details-card">
-                <h3>
-                    Personal Info
-                    <button className="edit-toggle" onClick={handleEditProfile} style={{width:'auto', marginTop:0}}>
-                        <Edit size={14} /> Edit
+                {/* HEADER: Title Left, Edit Button Right */}
+                <div className="details-header-row">
+                    <h3>Personal Info</h3>
+                    <button className="edit-icon-btn" onClick={handleEditProfile} title="Edit Profile">
+                        <Edit size={18} />
                     </button>
-                </h3>
+                </div>
+                
                 {[
                   { l: 'Full Name', v: user?.name },
-                  { l: 'ID', v: user?.id },
                   { l: 'Position', v: user?.position },
                   { l: 'Department', v: user?.department },
                   { l: 'Branch', v: user?.branch },

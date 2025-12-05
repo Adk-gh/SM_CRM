@@ -16,6 +16,9 @@ import {
 Chart.register(...registerables);
 
 // --- CSS STYLES ---
+// ... imports remain the same ...
+
+// --- CSS STYLES ---
 const styles = `
 /* ===== Base Styles ===== */
 * {
@@ -44,7 +47,7 @@ const styles = `
 }
 
 [data-theme="dark"] {
-  /* Dark Theme Overrides (Matches Customer Profile) */
+  /* Dark Theme Overrides */
   --bg-primary: #1E2A38;
   --bg-secondary: #2C3E50;
   --text-primary: #E9ECEE;
@@ -61,17 +64,12 @@ const styles = `
   --chart-text: #E9ECEE;
 }
 
-body {
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  min-height: 100vh;
-  line-height: 1.6;
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
+/* DELETED: body { ... } block removed to prevent conflict with Layout.js */
 
 /* ===== Dashboard Layout ===== */
 .dashboard-modern {
-  min-height: 100vh;
+  /* Changed from min-height: 100vh to 100% to fit inside Layout container */
+  height: 100%; 
   background: var(--bg-primary);
   padding: 30px;
 }
@@ -112,7 +110,7 @@ body {
 
 .tab-button.active {
   background: var(--accent-primary);
-  color: #FFFFFF; /* Always white text on active primary button */
+  color: #FFFFFF; 
 }
 
 .tab-button svg {
@@ -174,10 +172,9 @@ body {
     align-items: center;
     justify-content: center;
     color: var(--accent-color, var(--accent-primary));
-    background: rgba(0,0,0,0.05); /* Subtle background */
+    background: rgba(0,0,0,0.05); 
 }
 
-/* In dark mode, make the icon background slightly more visible */
 [data-theme="dark"] .kpi-icon-wrapper {
     background: rgba(255,255,255,0.05);
 }
@@ -278,6 +275,8 @@ body {
   }
 }
 `;
+
+// ... The rest of your React component logic (InternalChart, Dashboard) remains exactly the same ...
 
 // --- HELPER CHART COMPONENT ---
 const InternalChart = ({ type, data, isDark }) => {
@@ -508,11 +507,7 @@ const Dashboard = () => {
     }
   ];
 
-  const navItems = [
-    { id: 'overview', Icon: PieChart, label: 'Overview' },
-    { id: 'customers', Icon: TrendingUp, label: 'Growth Trend' },
-    { id: 'satisfaction', Icon: Star, label: 'Satisfaction' }
-  ];
+  
 
   const renderContent = () => {
     if (loading) return <div style={{padding:'20px', textAlign:'center', color:'var(--text-secondary)'}}>Loading Dashboard Data...</div>;
@@ -600,18 +595,7 @@ const Dashboard = () => {
     <div className="dashboard-modern">
       <style>{styles}</style>
       
-      <div className="dashboard-tabs">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            className={`tab-button ${activeSection === item.id ? 'active' : ''}`}
-            onClick={() => setActiveSection(item.id)}
-          >
-            <item.Icon />
-            <span>{item.label}</span>
-          </button>
-        ))}
-      </div>
+      
 
       <div className="dashboard-main">
         {renderContent()}

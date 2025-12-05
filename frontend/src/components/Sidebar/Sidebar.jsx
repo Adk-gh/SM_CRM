@@ -73,7 +73,7 @@ const Sidebar = ({ navigation, userRole, notificationCount }) => {
                 }
               `}
             >
-              {/* Icon Container - Badge is now attached here */}
+              {/* Icon Container */}
               <div className="relative inline-block">
                 <i className={`
                   transition-colors duration-250
@@ -84,24 +84,36 @@ const Sidebar = ({ navigation, userRole, notificationCount }) => {
                   ${nav.icon}
                 `}></i>
 
-                {/* --- UNIFIED NOTIFICATION BADGE --- */}
-                {/* Red Circle + Number + Border to separate from icon */}
-                {badgeCount > 0 && (
-                  <span className="absolute -top-2 -right-3 flex items-center justify-center min-w-[20px] h-5 px-1 text-[10px] font-bold text-white bg-red-500 rounded-full border-2 border-[#42668b] shadow-sm z-10">
-                    {badgeCount > 99 ? '99+' : badgeCount}
-                  </span>
-                )}
+                {/* Mobile/Tablet Badge (Floating on icon) */}
+                <span className="xl:hidden">
+                    {badgeCount > 0 && (
+                    <span className="absolute -top-2 -right-3 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[9px] font-bold text-white bg-red-500 rounded-full border-2 border-[#42668b] shadow-sm z-10">
+                        {badgeCount > 99 ? '99+' : badgeCount}
+                    </span>
+                    )}
+                </span>
               </div>
               
-              <span className={`
-                font-medium tracking-wide
-                text-[10px] uppercase block
-                md:hidden
-                xl:block xl:text-[15px] xl:font-semibold xl:normal-case xl:tracking-[0.2px]
-                w-full text-center xl:text-left
+              {/* Text Label & Desktop Badge */}
+              <div className={`
+                flex items-center w-full justify-center xl:justify-start
               `}>
-                {nav.name}
-              </span>
+                  <span className={`
+                    font-medium tracking-wide
+                    text-[10px] uppercase block
+                    md:hidden
+                    xl:block xl:text-[15px] xl:font-semibold xl:normal-case xl:tracking-[0.2px]
+                  `}>
+                    {nav.name}
+                  </span>
+
+                  {/* Desktop Badge (Inline to the right of text) */}
+                  {badgeCount > 0 && (
+                    <span className="hidden xl:flex items-center justify-center ml-3 min-w-[20px] h-5 px-1.5 text-[11px] font-bold text-white bg-red-500 rounded-full shadow-sm">
+                        {badgeCount > 99 ? '99+' : badgeCount}
+                    </span>
+                  )}
+              </div>
             </Link>
           );
         })}

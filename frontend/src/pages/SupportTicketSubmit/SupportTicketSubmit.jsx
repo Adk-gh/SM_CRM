@@ -5,8 +5,6 @@ import {
   CheckCircle, Loader2, X, AlertTriangle,
   Moon, Sun, MoreHorizontal
 } from 'lucide-react';
-
-// NOTE: We removed 'addDoc' and 'db' imports because we are now writing via the Vercel API
 import ReCAPTCHA from "react-google-recaptcha";
 
 const SM_BRANCHES = [
@@ -21,7 +19,6 @@ const ISSUE_CATEGORIES = [
   { value: 'feature', label: 'Feature Request', icon: '✨' },
   { value: 'bug', label: 'Report a Bug', icon: '🐛' },
   { value: 'general', label: 'General Inquiry', icon: '❓' },
-  // ADDED: Others Category
   { value: 'others', label: 'Others / Unspecified', icon: '🔹' }
 ];
 
@@ -166,25 +163,33 @@ const SupportTicketSubmit = () => {
       }
 
       // 3. Prepare Payload
-      // Note: We are sending 'captchaToken' to the server for verification
+      // We explicitly set status='open' and priority='Unassigned' 
+      // so it matches the filter logic in your Admin Dashboard "New" tab.
       const ticketPayload = {
         userName: formData.userName,
         userEmail: formData.userEmail,
         userPhone: formData.userPhone,
+        
         smBranch: formData.smBranch,
         branchLabel: SM_BRANCHES.find(b => b.value === formData.smBranch)?.label || 'SM City San Pablo',
+        
         issueCategory: formData.issueCategory,
+        categoryLabel: ISSUE_CATEGORIES.find(cat => cat.value === formData.issueCategory)?.label || 'N/A',
+        
         issueTitle: formData.issueTitle,
         issueDescription: formData.issueDescription,
-        categoryLabel: ISSUE_CATEGORIES.find(cat => cat.value === formData.issueCategory)?.label || 'N/A',
         attachments: uploadedAttachments,
 
-        // IMPORTANT: Send the token to Vercel
+        // === CRITICAL FIELDS FOR DASHBOARD ===
+        status: 'open',
+        priority: 'Unassigned',
+        agentReply: '',
+        
+        // Verification
         captchaToken: captchaToken
       };
 
       // 4. Send to Vercel API Route
-      // ✅ FIXED: Changed URL from 'submit-ticket' to 'submitTicket' to match backend filename
       const response = await fetch('https://sm-crm-rho.vercel.app/api/submitTicket', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -194,7 +199,6 @@ const SupportTicketSubmit = () => {
       const result = await response.json();
 
       if (!response.ok) {
-        // This handles if the Server says "Captcha Invalid"
         throw new Error(result.message || 'Server validation failed');
       }
 
@@ -202,7 +206,7 @@ const SupportTicketSubmit = () => {
       setUiState({
         loading: false,
         submitted: true,
-        ticketId: result.id, // The ID returned by Vercel
+        ticketId: result.id,
         dragActive: false,
         message: { 
           type: 'success', 
@@ -218,7 +222,6 @@ const SupportTicketSubmit = () => {
       if (error.message.includes('Cloudinary')) {
         errorMessage = 'Image upload failed. Please try a smaller image.';
       } else if (error.message) {
-        // Use the error message from the server (e.g. "Captcha verification failed")
         errorMessage = error.message;
       }
       
@@ -425,7 +428,7 @@ const SupportTicketSubmit = () => {
                     <div className="flex flex-col">
                       <label htmlFor="userPhone" className={labelClasses}>Phone Number</label>
                       <input
-                        type="tel"
+                        type="number"
                         id="userPhone"
                         name="userPhone"
                         value={formData.userPhone}
