@@ -184,7 +184,7 @@ const SupportTicketSubmit = () => {
       };
 
       // 4. Send to Vercel API Route
-      const response = await fetch('/api/submitTicket', {
+      const response = await fetch('https://sm-crm-rho.vercel.app/api/submit-ticket', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(ticketPayload)

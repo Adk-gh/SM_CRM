@@ -1,4 +1,4 @@
-// sm-crm-app/api/submit-ticket.js
+// sm-crm-app/api/submitTicket.js
 
 // ❌ REMOVED: const fetch = require('node-fetch');
 // Native Node.js fetch is used below to fix the [DEP0169] warning.
@@ -43,7 +43,8 @@ module.exports = async (req, res) => {
   // -------------------------------------------------------------------
   const allowedOrigins = [
     'http://localhost:5173', 
-    'https://304sm-crm-rho.vercel.app', // Your production domain
+    'https://304sm-crm-rho.vercel.app',
+    'https://crm-db-6f861.web.app', // Your production domain
     // 'https://your-custom-domain.com' // Add others if needed
   ];
   
