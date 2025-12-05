@@ -230,7 +230,7 @@ const Login = () => {
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showSignupConfirmPassword, setShowSignupConfirmPassword] = useState(false);
 
-  const branches = ['SM Megamall', 'SM Mall of Asia', 'SM North EDSA', 'SM City Cebu', 'SM City Davao'];
+  const branches = ['SM City San Pablo'];
 
   useEffect(() => {
     const user = auth.currentUser;
