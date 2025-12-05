@@ -35,7 +35,7 @@ const db = admin.firestore();
 
 module.exports = async (req, res) => {
   // -------------------------------------------------------------------
-  // 🔑 START CORS FIX (Dynamic)
+  // 🔑 START CORS FIX (Updated & Robust)
   // -------------------------------------------------------------------
   const allowedOrigins = [
     'http://localhost:5173', 
@@ -45,15 +45,27 @@ module.exports = async (req, res) => {
   
   const origin = req.headers.origin;
   
+  // 1. Allow Origin
   if (allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   } else {
-    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
+    // Optional: Allow all for dev, or fallback to localhost
+    res.setHeader('Access-Control-Allow-Origin', 'https://crm-db-6f861.web.app');
   }
 
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // 2. Allow Credentials (Vital for cross-origin)
+  res.setHeader('Access-Control-Allow-Credentials', true);
 
+  // 3. Allow Methods
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+
+  // 4. Allow Headers (The "Kitchen Sink" list to prevent blocking)
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
+
+  // 5. Handle Preflight explicitly
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -96,7 +108,6 @@ module.exports = async (req, res) => {
     // -----------------------------------------------------------------
     
     // 🛡️ SECURITY: Explicitly extract only allowed fields.
-    // This prevents users from injecting fields like "status: resolved" or "isAdmin: true"
     const { 
       fullName, 
       email, 
