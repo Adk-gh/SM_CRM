@@ -184,6 +184,7 @@ const SupportTicketSubmit = () => {
       };
 
       // 4. Send to Vercel API Route
+      // ✅ FIXED: Changed URL from 'submit-ticket' to 'submitTicket' to match backend filename
       const response = await fetch('https://sm-crm-rho.vercel.app/api/submitTicket', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
