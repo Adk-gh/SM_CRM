@@ -35,7 +35,7 @@ const db = admin.firestore();
 
 module.exports = async (req, res) => {
   // -------------------------------------------------------------------
-  // 🔑 START CORS FIX (Updated & Robust)
+  // 🔑 START CORS FIX (Robust)
   // -------------------------------------------------------------------
   const allowedOrigins = [
     'http://localhost:5173', 
@@ -45,27 +45,19 @@ module.exports = async (req, res) => {
   
   const origin = req.headers.origin;
   
-  // 1. Allow Origin
   if (allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   } else {
-    // Optional: Allow all for dev, or fallback to localhost
     res.setHeader('Access-Control-Allow-Origin', 'https://crm-db-6f861.web.app');
   }
 
-  // 2. Allow Credentials (Vital for cross-origin)
   res.setHeader('Access-Control-Allow-Credentials', true);
-
-  // 3. Allow Methods
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-
-  // 4. Allow Headers (The "Kitchen Sink" list to prevent blocking)
   res.setHeader(
     'Access-Control-Allow-Headers',
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
   );
 
-  // 5. Handle Preflight explicitly
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -82,7 +74,7 @@ module.exports = async (req, res) => {
 
   try {
     // -----------------------------------------------------------------
-    // STEP 1: Verify reCAPTCHA with Google (Using Native Fetch)
+    // STEP 1: Verify reCAPTCHA with Google
     // -----------------------------------------------------------------
     const secretKey = process.env.RECAPTCHA_SECRET_KEY;
 
@@ -104,32 +96,40 @@ module.exports = async (req, res) => {
     }
 
     // -----------------------------------------------------------------
-    // STEP 2: Save to Firestore (SECURE WHITELISTING)
+    // STEP 2: Save to Firestore (FIXED VARIABLE NAMES)
     // -----------------------------------------------------------------
     
-    // 🛡️ SECURITY: Explicitly extract only allowed fields.
+    // We extract the names sent by the frontend (userName, issueCategory, etc)
     const { 
-      fullName, 
-      email, 
-      department, 
-      subject, 
-      description,
-      priority = 'normal' // Default if not provided
+      userName, 
+      userEmail, 
+      userPhone,
+      smBranch,
+      issueCategory, 
+      issueTitle, 
+      issueDescription,
+      attachments = [],
+      priority = 'normal'
     } = rawBody;
 
-    // Basic Validation
-    if (!fullName || !email || !description || !department) {
+    // Validation: Check if the *Frontend* fields exist
+    if (!userName || !userEmail || !issueDescription || !issueCategory) {
+       console.error("Missing fields. Received:", rawBody);
        return res.status(400).json({ message: 'Missing required fields.' });
     }
 
+    // Map them to your Database Schema
     const docRef = await db.collection('supportTickets').add({
-      fullName,
-      email,
-      department,
-      subject,
-      description,
+      fullName: userName,        // Map userName -> fullName
+      email: userEmail,          // Map userEmail -> email
+      phone: userPhone || '',
+      branch: smBranch,
+      department: issueCategory, // Map issueCategory -> department
+      subject: issueTitle,       // Map issueTitle -> subject
+      description: issueDescription, // Map issueDescription -> description
+      attachments: attachments,
       priority,
-      status: 'open', // Enforced by server
+      status: 'open',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       captchaVerified: true,
